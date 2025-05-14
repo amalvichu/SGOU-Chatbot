@@ -8,9 +8,11 @@ class ProgramCategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ProgramSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    
     class Meta:
         model = Program
-        fields = '__all__'
+        fields = ['id', 'name', 'category', 'category_name', 'duration', 'mode', 'description', 'fee_structure', 'eligibility']
 
 class AdmissionSerializer(serializers.ModelSerializer):
     class Meta:

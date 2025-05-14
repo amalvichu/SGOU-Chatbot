@@ -1,11 +1,17 @@
 from django.db import models
+import logging
 
 # Create your models here.
 
 # PROGRAM CATEGORY
 class ProgramCategory(models.Model):
     name = models.CharField(max_length=100)
-    duration = models.CharField(max_length=50)
+    duration = models.PositiveIntegerField(help_text='Duration in months')
+
+    class Meta:
+        ordering = ['name']
+        verbose_name = 'Program Category'
+        verbose_name_plural = 'Program Categories'
 
     def __str__(self):
         return self.name
@@ -13,15 +19,28 @@ class ProgramCategory(models.Model):
 # PROGRAM DETAILS
 class Program(models.Model):
     name = models.CharField(max_length=100)
-    category = models.ForeignKey(ProgramCategory, on_delete=models.CASCADE, related_name='programs')
-    duration = models.CharField(max_length=50)
+    category = models.ForeignKey(
+        ProgramCategory,
+        on_delete=models.CASCADE,
+        related_name='programs',
+        db_index=True
+    )
+    duration = models.PositiveIntegerField(help_text='Duration in months')
     mode = models.CharField(max_length=100)
     description = models.TextField()
     fee_structure = models.TextField()
     eligibility = models.TextField()
 
+    class Meta:
+        ordering = ['name', 'id']
+        verbose_name = 'Program'
+        verbose_name_plural = 'Programs'
+        indexes = [
+            models.Index(fields=['name', 'category'])
+        ]
+    
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.category.name})"
     
 # ADMISSION INFORMATION
 class Admission(models.Model):

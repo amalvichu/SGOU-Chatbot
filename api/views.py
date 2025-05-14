@@ -14,7 +14,7 @@ class ProgramCategoryList(generics.ListCreateAPIView):
     serializer_class = ProgramCategorySerializer
 
 class ProgramList(generics.ListCreateAPIView):
-    queryset = Program.objects.all()
+    queryset = Program.objects.select_related('category').all()
     serializer_class = ProgramSerializer
 
 class AdmissionList(generics.ListCreateAPIView):
@@ -43,4 +43,4 @@ class NewsUpdateList(generics.ListCreateAPIView):
 
 class FeedbackList(generics.ListCreateAPIView):
     queryset = Feedback.objects.all()
-    serializer_class = FeedbackSerializer   
+    serializer_class = FeedbackSerializer
