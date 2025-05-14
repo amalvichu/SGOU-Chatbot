@@ -90,10 +90,7 @@ function sendMessage() {
             const avatarContainer = document.createElement('div');
             avatarContainer.classList.add('avatar-container');
             
-            const avatar = document.createElement('img');
-            avatar.src = `/static/images/${activeTab}-character_logo.jpg`;
-            avatar.classList.add('avatar', 'rounded');
-            
+            const avatar = document.getElementById(`${activeTab}-avatar`).cloneNode(true);
             avatarContainer.appendChild(avatar);
             messageWrapper.appendChild(avatarContainer);
         }
