@@ -1,20 +1,19 @@
 from django.shortcuts import render
 from django.http import JsonResponse
-from Chat.models import Program
+from Chat.models import Program, ProgramCategory
 
-# Create your views here.
 
-def index(request):
-    return render(request, 'index.html')
-
-def get_programs(request):
+def program_query(request):
     programs = Program.objects.all()
     data = [
         {
             'name': program.name,
+            'category': program.category.name,
             'duration': program.duration,
             'description': program.description
         }
         for program in programs
     ]
     return JsonResponse(data, safe=False)
+
+# Create your views here.
