@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'Chat',
+    'api',
     'rest_framework',
 ]
 
@@ -78,9 +79,9 @@ WSGI_APPLICATION = 'Chatbot.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'sgou_creds',
+        'NAME': 'SGOU Database',
         'USER': 'sgou_user',
-        'PASSWORD': 'sgou4@1',
+        'PASSWORD': 'Sgou4@1',
         'HOST': 'localhost',
         'PORT': '5432',
     }
