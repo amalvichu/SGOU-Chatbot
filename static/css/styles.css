@@ -13,7 +13,6 @@ body {
 
 .home {
     display: flex;
-    flex-direction: column;
     height: 100vh;
     background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
 }
@@ -24,6 +23,22 @@ body {
     align-items: center;
     padding: 1rem 2rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    position: fixed;
+    top: 0;
+    width: calc(100% - 250px);
+    left: 250px;
+    z-index: 100;
+    height: 60px;
+}
+
+@media (max-width: 768px) {
+    .header {
+        width: 100%;
+        left: 0;
+        padding: 1rem;
+        position: relative;
+        margin-bottom: 1rem;
+    }
 }
 
 .bot-name {
@@ -49,9 +64,134 @@ body {
 
 .sidebar {
     width: 250px;
+    height: 100vh;
     background: rgba(0, 0, 0, 0.2);
     padding: 1rem;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 200px;
+        height: 100vh;
+        position: fixed;
+    }
+    
+    .header {
+        width: calc(100% - 200px);
+        left: 200px;
+        padding: 0.8rem 1.5rem;
+    }
+    
+    .chat-area {
+        margin-left: 200px;
+        width: calc(100% - 200px);
+        padding: 0.8rem;
+    }
+    
+    .input-area {
+        margin-left: 200px;
+        width: calc(100% - 200px);
+        padding: 0.8rem 0;
+    }
+    
+    .sidebar-logo {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .tab {
+        padding: 0.6rem 0.8rem;
+        margin-bottom: 0.4rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .sidebar {
+        width: 160px;
+    }
+    
+    .header {
+        width: calc(100% - 160px);
+        left: 160px;
+        padding: 0.6rem 1rem;
+        height: 50px;
+    }
+    
+    .chat-area {
+        margin-left: 160px;
+        width: calc(100% - 160px);
+        padding: 0.6rem;
+    }
+    
+    .input-area {
+        margin-left: 160px;
+        width: calc(100% - 160px);
+        padding: 0.6rem 0;
+    }
+    
+    .sidebar-logo {
+        width: 60px;
+        height: 60px;
+    }
+    
+    .tab {
+        padding: 0.5rem 0.6rem;
+        margin-bottom: 0.3rem;
+        font-size: 0.9rem;
+    }
+    
+    .message {
+        max-width: 80%;
+        padding: 0.6rem 1rem;
+    }
+    
+    .message-input {
+        padding: 0.6rem 0.8rem;
+        min-width: 0;
+        width: 100%;
+    }
+    
+    .send-button {
+        padding: 0.6rem 1rem;
+    }
+}
+
+.sidebar .logo {
+    width: 60px;
+    height: 60px;
+    background: #4cc9f0;
+    border-radius: 50%;
+    margin: 1rem auto;
+    display: block;
+}
+
+.logo-container {
+    display: flex;
+    justify-content: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 1rem;
+}
+
+.sidebar-logo {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+@media (max-width: 768px) {
+    .sidebar-logo {
+        width: 80px;
+        height: 80px;
+    }
 }
 
 .tab {
@@ -78,6 +218,9 @@ body {
     display: flex;
     flex-direction: column;
     padding: 1rem;
+    margin-left: 250px;
+    margin-top: 60px;
+    width: calc(100% - 250px);
 }
 
 .messages {
@@ -104,11 +247,16 @@ body {
     word-wrap: break-word;
 }
 
+@media (max-width: 480px) {
+    .message {
+        max-width: 85%;
+        padding: 0.6rem 1rem;
+    }
+}
+
 .avatar-container {
     width: 40px;
     height: 40px;
-    margin-top: -20px;
-    margin-left: -5px;
 }
 
 .avatar {
@@ -139,6 +287,25 @@ body {
     gap: 0.5rem;
     padding: 1rem 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-left: 130px;
+    width: calc(100% - 250px);
+}
+
+@media (max-width: 768px) {
+    .input-area {
+        margin-left: 200px;
+        width: calc(100% - 230px);
+        padding: 0.8rem 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .input-area {
+        max-width: 85%;
+        margin-left: 160px;
+        width: calc(100% - 200px);
+        padding: 0.6rem 0;
+    }
 }
 
 .message-input {
@@ -149,6 +316,8 @@ body {
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
     outline: none;
+    min-width: 0;
+    width: 100%;
 }
 
 .send-button {
