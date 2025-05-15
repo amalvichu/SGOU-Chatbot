@@ -1,18 +1,26 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="{% static 'js/chatbot.js' %}"></script>
+    <script src="{% static 'js/sidebar-toggle.js' %}"></script>
 </head>
+
 <body>
     <section class="home">
         <div class="header">
             <div class="bot-name">INTELLION</div>
+            <span class="header-bord"></span>
             <div class="logo"></div>
+        </div>
+        <div class="hamburger-menu">
+            <span class="material-icons">menu</span>
         </div>
         <div class="chat-container">
             <div class="sidebar">
@@ -23,6 +31,9 @@
                 <div class="tab" data-tab="certification">Certification</div>
                 <div class="tab" data-tab="centers">Centers</div>
                 <div class="tab" data-tab="learning-center">Learning Center</div>
+                <div class="toggle-btn">
+                    <span class="material-icons">close</span>
+                </div>
             </div>
             <div class="chat-area">
                 <div class="messages"></div>
@@ -40,4 +51,5 @@
         </div>
     </section>
 </body>
+
 </html>

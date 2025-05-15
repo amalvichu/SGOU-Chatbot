@@ -1,24 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
-    const tabs = document.querySelectorAll('.tab');
-    const messageInput = document.querySelector('.message-input');
-    const sendButton = document.querySelector('.send-button');
-    const messagesContainer = document.querySelector('.messages');
-    
-    let activeTab = 'education';
-    
-    // Tab switching functionality
-    tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            tabs.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            activeTab = this.dataset.tab;
-            // Clear messages when switching tabs
-            messagesContainer.innerHTML = '';
-        });
-    });
-    
-    // Send message functionality
-    // Character introductions for each tab
+// Character introductions for each tab
 const tabCharacters = {
     'programs': {
         name: 'Program Pro',
@@ -38,16 +18,42 @@ const tabCharacters = {
     }
 };
 
-// Show character introduction when tab changes
-document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', function() {
-        const tabName = this.dataset.tab;
-        const character = tabCharacters[tabName];
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.tab');
+    const messageInput = document.querySelector('.message-input');
+    const sendButton = document.querySelector('.send-button');
+    const messagesContainer = document.querySelector('.messages');
+    
+    let activeTab = 'programs';
+    
+    // Set Programs tab as active and show intro on page load
+    const programsTab = document.querySelector('[data-tab="programs"]');
+    if (programsTab) {
+        programsTab.classList.add('active');
+        const character = tabCharacters['programs'];
         if (character) {
             addMessage('bot', character.intro);
         }
+    }
+    
+    // Tab switching functionality
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            activeTab = this.dataset.tab;
+            // Clear messages when switching tabs
+            messagesContainer.innerHTML = '';
+            // Show character introduction for the new tab
+            const character = tabCharacters[activeTab];
+            if (character) {
+                addMessage('bot', character.intro);
+            }
+        });
     });
-});
+    
+    // Send message functionality
+
 
 function sendMessage() {
     const messageText = messageInput.value.trim();
@@ -61,7 +67,28 @@ function sendMessage() {
             let responseText = '';
             switch(activeTab) {
                 case 'programs':
-                    responseText = 'Here\'s more information about our programs...';
+                    // Call SGOU API to get program information
+                    fetch('http://192.168.20.11:8000/api/programmes', {
+                        method: 'GET',
+                        headers: {
+                            'X-API-KEY': '$2y$10$M0JLrgVmX2AUUqMZkrqaKOrgaMMaVFusOVjiXkVjc1YLyqcYFY9Bi'
+                        }
+                    })
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Unauthorized or failed request');
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            responseText = formatProgramResponse(data, messageText);
+                            addMessage('bot', responseText);
+                        })
+                        .catch(error => {
+                            console.error('Error fetching programs:', error);
+                            responseText = 'Sorry, I couldn\'t retrieve program information at this time.';
+                            addMessage('bot', responseText);
+                        });
                     break;
                 case 'certification':
                     responseText = 'Let me tell you about our certification process...';
@@ -79,7 +106,19 @@ function sendMessage() {
 }
     
     // Add message to chat
-    function addMessage(sender, text) {
+    function formatProgramResponse(data, query) {
+    // Format API response based on user query
+    if (data.programme && data.programme.length > 0) {
+        let response = 'Here are our available programs:\n';
+        data.programme.forEach(programme => {
+            response += `- ${programme.name || 'Unnamed program'}\n`;
+        });
+        return response;
+    }
+    return 'No programs found matching your query.';
+}
+
+function addMessage(sender, text) {
         const messageWrapper = document.createElement('div');
         messageWrapper.classList.add('message-wrapper');
         
