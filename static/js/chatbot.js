@@ -1,4 +1,4 @@
-// Character introductions for each tab
+// Character configurations for each tab
 const tabCharacters = {
     'programs': {
         name: 'Program Pro',
@@ -18,136 +18,146 @@ const tabCharacters = {
     }
 };
 
-document.addEventListener('DOMContentLoaded', function() {
-    const tabs = document.querySelectorAll('.tab');
-    const messageInput = document.querySelector('.message-input');
-    const sendButton = document.querySelector('.send-button');
-    const messagesContainer = document.querySelector('.messages');
-    
-    let activeTab = 'programs';
-    
-    // Set Programs tab as active and show intro on page load
-    const programsTab = document.querySelector('[data-tab="programs"]');
-    if (programsTab) {
-        programsTab.classList.add('active');
-        const character = tabCharacters['programs'];
-        if (character) {
-            addMessage('bot', character.intro);
-        }
+// Global variables for DOM elements
+let activeTab = 'programs';
+let messagesContainer;
+let messageInput;
+let sendButton;
+let tabs;
+
+// Initialize the chat interface
+function initializeChat() {
+    // Get DOM elements
+    messagesContainer = document.querySelector('.messages');
+    messageInput = document.querySelector('.message-input');
+    sendButton = document.querySelector('.send-button');
+    tabs = document.querySelectorAll('.tab');
+
+    // Set up initial active tab and display welcome message
+    const activeTabElement = document.querySelector('.tab.active');
+    if (activeTabElement) {
+        activeTab = activeTabElement.dataset.tab;
+        displayWelcomeMessage(activeTab);
     }
-    
-    // Tab switching functionality
+
+    // Set up event listeners
+    setupEventListeners();
+}
+
+// Display welcome message for the current tab
+function displayWelcomeMessage(tabId) {
+    const character = tabCharacters[tabId];
+    if (character) {
+        addMessage('bot', character.intro);
+    }
+}
+
+// Set up all event listeners
+function setupEventListeners() {
+    // Tab switching
     tabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            tabs.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-            activeTab = this.dataset.tab;
-            // Clear messages when switching tabs
-            messagesContainer.innerHTML = '';
-            // Show character introduction for the new tab
-            const character = tabCharacters[activeTab];
-            if (character) {
-                addMessage('bot', character.intro);
-            }
-        });
+        tab.addEventListener('click', () => handleTabSwitch(tab));
     });
-    
-    // Send message functionality
 
+    // Message sending
+    sendButton.addEventListener('click', handleMessageSend);
+    messageInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleMessageSend();
+        }
+    });
+}
 
-function sendMessage() {
-    const messageText = messageInput.value.trim();
-    if (messageText) {
+// Handle tab switching
+function handleTabSwitch(tab) {
+    // Update active tab styling
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    // Update active tab and clear messages
+    activeTab = tab.dataset.tab;
+    messagesContainer.innerHTML = '';
+
+    // Display welcome message for new tab
+    displayWelcomeMessage(activeTab);
+}
+
+// Handle sending messages
+function handleMessageSend() {
+    const message = messageInput.value.trim();
+    if (message) {
         // Add user message
-        addMessage('user', messageText);
+        addMessage('user', message);
         messageInput.value = '';
-        
-        // Simulate bot response based on active tab
+
+        // Simulate bot response after a short delay
         setTimeout(() => {
-            let responseText = '';
-            switch(activeTab) {
-                case 'programs':
-                    // Call SGOU API to get program information
-                    fetch('http://192.168.20.11:8000/api/programmes', {
-                        method: 'GET',
-                        headers: {
-                            'X-API-KEY': '$2y$10$M0JLrgVmX2AUUqMZkrqaKOrgaMMaVFusOVjiXkVjc1YLyqcYFY9Bi'
-                        }
-                    })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Unauthorized or failed request');
-                            }
-                            return response.json();
-                        })
-                        .then(data => {
-                            responseText = formatProgramResponse(data, messageText);
-                            addMessage('bot', responseText);
-                        })
-                        .catch(error => {
-                            console.error('Error fetching programs:', error);
-                            responseText = 'Sorry, I couldn\'t retrieve program information at this time.';
-                            addMessage('bot', responseText);
-                        });
-                    break;
-                case 'certification':
-                    responseText = 'Let me tell you about our certification process...';
-                    break;
-                case 'centers':
-                    responseText = 'Here are details about our centers...';
-                    break;
-                case 'learning-center':
-                    responseText = 'Here\'s what our learning center offers...';
-                    break;
-            }
-            addMessage('bot', responseText);
+            generateBotResponse(message);
         }, 500);
     }
 }
-    
-    // Add message to chat
-    function formatProgramResponse(data, query) {
-    // Format API response based on user query
-    if (data.programme && data.programme.length > 0) {
-        let response = 'Here are our available programs:\n';
-        data.programme.forEach(programme => {
-            response += `- ${programme.name || 'Unnamed program'}\n`;
-        });
-        return response;
+
+// Add a message to the chat
+function addMessage(type, text) {
+    const messageWrapper = document.createElement('div');
+    messageWrapper.className = 'message-wrapper';
+
+    // Create avatar container and image only for bot messages
+    if (type === 'bot') {
+        const avatarContainer = document.createElement('div');
+        avatarContainer.className = 'avatar-container';
+        
+        const avatar = document.createElement('img');
+        avatar.className = 'avatar rounded';
+        avatar.src = document.getElementById(`${activeTab}-avatar`).src;
+        avatar.alt = tabCharacters[activeTab].name;
+        
+        avatarContainer.appendChild(avatar);
+        messageWrapper.appendChild(avatarContainer);
     }
-    return 'No programs found matching your query.';
+
+    // Create message content
+    const message = document.createElement('div');
+    message.className = `message ${type}`;
+    message.textContent = text;
+    
+    messageWrapper.appendChild(message);
+    messagesContainer.appendChild(messageWrapper);
+
+    // Scroll to bottom
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-function addMessage(sender, text) {
-        const messageWrapper = document.createElement('div');
-        messageWrapper.classList.add('message-wrapper');
-        
-        const messageDiv = document.createElement('div');
-        messageDiv.classList.add('message', sender);
-        
-        if (sender === 'bot') {
-            const avatarContainer = document.createElement('div');
-            avatarContainer.classList.add('avatar-container');
-            
-            const avatar = document.getElementById(`${activeTab}-avatar`).cloneNode(true);
-            avatarContainer.appendChild(avatar);
-            messageWrapper.appendChild(avatarContainer);
-        }
-        
-        const textNode = document.createElement('span');
-        textNode.textContent = text;
-        messageDiv.appendChild(textNode);
-        
-        messageWrapper.appendChild(messageDiv);
-        messagesContainer.appendChild(messageWrapper);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-    
-    // Event listeners
-    sendButton.addEventListener('click', sendMessage);
-    messageInput.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            sendMessage();
-        }
-    });
-});
+// Generate bot response based on user input and active tab
+function generateBotResponse(userMessage) {
+    const responses = {
+        'programs': [
+            'We offer various educational programs including Bachelor\'s, Master\'s, and Certificate programs.',
+            'Our most popular programs are in Business, Technology, and Healthcare.',
+            'Would you like to know more about a specific program?'
+        ],
+        'certification': [
+            'We provide industry-recognized certifications in multiple fields.',
+            'Popular certifications include Project Management, IT Security, and Business Analytics.',
+            'Which certification interests you?'
+        ],
+        'centers': [
+            'We have learning centers located across multiple cities.',
+            'Each center is equipped with modern facilities and expert instructors.',
+            'Would you like to know about a specific center?'
+        ],
+        'learning-center': [
+            'Our learning center provides various resources including online libraries, study materials, and tutorials.',
+            'We also offer virtual labs and interactive learning tools.',
+            'What specific resources are you looking for?'
+        ]
+    };
+
+    // Get random response for the active tab
+    const tabResponses = responses[activeTab];
+    const randomResponse = tabResponses[Math.floor(Math.random() * tabResponses.length)];
+    addMessage('bot', randomResponse);
+}
+
+// Initialize chat when DOM is loaded
+document.addEventListener('DOMContentLoaded', initializeChat);

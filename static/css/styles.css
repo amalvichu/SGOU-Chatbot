@@ -388,8 +388,11 @@ body {
 }
 
 .avatar-container {
+    position: relative;
     width: 40px;
     height: 40px;
+    margin-top: -15px;
+    align-self: flex-start;
 }
 
 .avatar {
