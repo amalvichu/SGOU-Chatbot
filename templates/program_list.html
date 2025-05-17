@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Programme List</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body class="home">
+    <div class="chat-container">
+        <div class="header-bord">
+            <h1 class="bot-name">Programmes</h1>
+        </div>
+        
+        <div class="chat-area">
+            <div class="messages" id="programmeList">
+                <!-- Programmes will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = 'http://192.168.20.11:8000/api/programmes';
+        const apiKey = '$2y$10$M0JLrgVmX2AUUqMZkrqaKOrgaMMaVFusOVjiXkVjc1YLyqcYFY9Bi';
+
+        fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'X-API-KEY': apiKey
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Unauthorized or failed request');
+            }
+            return response.json();
+        })
+        .then(data => {
+            const programmeList = document.getElementById('programmeList');
+            data.programme.forEach(programme => {
+                const messageWrapper = document.createElement('div');
+                messageWrapper.className = 'message-wrapper';
+
+                const message = document.createElement('div');
+                message.className = 'message bot';
+                message.textContent = programme.name || JSON.stringify(programme);
+
+                messageWrapper.appendChild(message);
+                programmeList.appendChild(messageWrapper);
+            });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            const programmeList = document.getElementById('programmeList');
+            const messageWrapper = document.createElement('div');
+            messageWrapper.className = 'message-wrapper';
+
+            const message = document.createElement('div');
+            message.className = 'message user';
+            message.textContent = 'Error loading programmes. Please try again later.';
+
+            messageWrapper.appendChild(message);
+            programmeList.appendChild(messageWrapper);
+        });
+    </script>
+</body>
+</html>
