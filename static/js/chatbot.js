@@ -79,19 +79,39 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Store chat history for each tab
+    const chatHistory = {};
+    
     // Tab switching functionality
     tabs.forEach(tab => {
         tab.addEventListener('click', function() {
             console.log("Tab clicked:", this.dataset.tab);
+            
+            // Save current tab's messages before switching
+            if (messagesContainer.innerHTML.trim() !== '') {
+                chatHistory[activeTab] = messagesContainer.innerHTML;
+            }
+            
             tabs.forEach(t => t.classList.remove('active'));
             this.classList.add('active');
             activeTab = this.dataset.tab;
-            // Clear messages when switching tabs
+            
+            // Clear and restore messages for the new tab
             messagesContainer.innerHTML = '';
-            // Show character introduction for the new tab
-            const character = tabCharacters[activeTab];
-            if (character) {
-                addMessage('bot', character.intro);
+            
+            // Restore messages if they exist, otherwise show intro
+            if (chatHistory[activeTab]) {
+                messagesContainer.innerHTML = chatHistory[activeTab];
+                // Scroll to bottom
+                setTimeout(() => {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }, 100);
+            } else {
+                // Show character introduction for the new tab
+                const character = tabCharacters[activeTab];
+                if (character) {
+                    addMessage('bot', character.intro);
+                }
             }
         });
     });
@@ -161,9 +181,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             let responseText = `Details for <strong>${selectedProgram.pgm_name || 'Program'}</strong>:<br><br>`;
                             responseText += `<div style="margin-bottom: 10px;"><strong>Name:</strong> ${selectedProgram.pgm_name || 'N/A'}</div>`;
                             if (selectedProgram.pgm_desc) responseText += `<div style="margin-bottom: 10px;"><strong>Description:</strong> ${selectedProgram.pgm_desc}</div>`;
-                            if (selectedProgram.pgm_category) responseText += `<div style="margin-bottom: 10px;"><strong>Category:</strong> ${selectedProgram.pgm_category}</div>`;
+                            //if (selectedProgram.pgm_category) responseText += `<div style="margin-bottom: 10px;"><strong>Category:</strong> ${selectedProgram.pgm_category}</div>`;
                             if (selectedProgram.pgm_year) responseText += `<div style="margin-bottom: 10px;"><strong>Year of Duration:</strong> ${selectedProgram.pgm_year}</div>`;
-                            if (selectedProgram.pgm_school) responseText += `<div style="margin-bottom: 10px;"><strong>Program School:</strong> ${selectedProgram.pgm_school}</div>`;
+                            //if (selectedProgram.pgm_school) responseText += `<div style="margin-bottom: 10px;"><strong>Program School:</strong> ${selectedProgram.pgm_school}</div>`;
                             addMessage('bot', responseText);
                         } else {
                             addMessage('bot', 'Invalid program number. Please enter a number from the list.');
