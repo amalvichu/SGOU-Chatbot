@@ -147,6 +147,37 @@ document.addEventListener('DOMContentLoaded', function() {
             addMessage('user', messageText);
             messageInput.value = '';
             
+            // Check if user is selecting a program by number
+            const programNumber = parseInt(messageText);
+            if (activeTab === 'programs' && !isNaN(programNumber)) {
+                // Show loading message
+                addMessage('bot', 'Fetching program details...');
+                
+                // Fetch programs from API
+                fetchPrograms().then(programs => {
+                    if (programs && programs.length > 0) {
+                        const selectedProgram = programs[programNumber - 1];
+                        if (selectedProgram) {
+                            let responseText = `Details for <strong>${selectedProgram.pgm_name || 'Program'}</strong>:<br><br>`;
+                            responseText += `<div style="margin-bottom: 10px;"><strong>Name:</strong> ${selectedProgram.pgm_name || 'N/A'}</div>`;
+                            if (selectedProgram.pgm_desc) responseText += `<div style="margin-bottom: 10px;"><strong>Description:</strong> ${selectedProgram.pgm_desc}</div>`;
+                            if (selectedProgram.pgm_category) responseText += `<div style="margin-bottom: 10px;"><strong>Category:</strong> ${selectedProgram.pgm_category}</div>`;
+                            if (selectedProgram.pgm_year) responseText += `<div style="margin-bottom: 10px;"><strong>Year of Duration:</strong> ${selectedProgram.pgm_year}</div>`;
+                            if (selectedProgram.pgm_school) responseText += `<div style="margin-bottom: 10px;"><strong>Program School:</strong> ${selectedProgram.pgm_school}</div>`;
+                            addMessage('bot', responseText);
+                        } else {
+                            addMessage('bot', 'Invalid program number. Please enter a number from the list.');
+                        }
+                    } else {
+                        addMessage('bot', 'I\'m sorry, I couldn\'t retrieve the program details at the moment. Please try again later.');
+                    }
+                }).catch(error => {
+                    console.error('Error fetching programs:', error);
+                    addMessage('bot', 'I\'m sorry, there was an issue retrieving program details. Please try again later.');
+                });
+                return;
+            }
+            
             // Check for program list request
             if (activeTab === 'programs' && isProgramListRequest(messageText)) {
                 // Show loading message
@@ -164,6 +195,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 console.warn('Invalid program data:', program);
                             }
                         });
+                        responseText += '\n\n<div style="margin-top: 20px;">If you want to know more about a program, type its number and send.</div>';
                         addMessage('bot', responseText);
                     } else {
                         addMessage('bot', 'I\'m sorry, I couldn\'t retrieve the program list at the moment. Please try again later or contact our admissions office for more information.');
@@ -207,6 +239,14 @@ document.addEventListener('DOMContentLoaded', function() {
                lowerMessage.includes('offering') ||
                lowerMessage.includes('what') ||
                lowerMessage.includes('show');
+    }
+    
+    // Function to format program details
+    function formatProgramDetails(text) {
+        if (text.includes('Details for program')) {
+            return text.replace(/\n/g, '<br>').replace(/<strong>(.*?)<\/strong>/g, '<strong>$1</strong><br>');
+        }
+        return text;
     }
     
     // Add message to chat
