@@ -14,9 +14,15 @@
     padding: 10px 0;
     margin-bottom: 10px;
     justify-content: center;
-    width: calc(100% - 2rem);
-    margin: 0 1rem;
+    width: 100%;
+    position: relative;
+    top: -60px;
+    z-index: 150; /* Higher than input area */
+    background: inherit;
     scrollbar-width: none; /* Hide scrollbar for Firefox */
+    padding-left: 1rem;
+    padding-right: 1rem;
+    margin-top: 10px; /* Added spacing from header */
 }
 
 .suggestions-container::-webkit-scrollbar {
@@ -27,9 +33,6 @@
     .suggestions-container {
         gap: 8px;
         padding: 8px 0;
-        justify-content: flex-start;
-        width: calc(100% - 1.6rem);
-        margin: 0 0.8rem;
     }
 }
 
@@ -37,9 +40,6 @@
     .suggestions-container {
         gap: 6px;
         padding: 6px 0;
-        justify-content: flex-start;
-        width: calc(100% - 1.2rem);
-        margin: 0 0.6rem;
     }
 }
 
@@ -48,6 +48,7 @@
     padding: 8px 16px;
     border-radius: 20px;
     background: linear-gradient(135deg, rgba(26, 26, 46, 0.8) 0%, rgba(22, 33, 62, 0.9) 100%);
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     border-radius: 12px;
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -107,15 +108,17 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem 2rem;
-    /* border-bottom: 1px solid rgba(255, 255, 255, 0.1); */
+    padding: clamp(0.5rem, 3vw, 2rem);
     position: fixed;
     top: 0;
-    width: calc(100% - 250px);
-    left: 250px;
+    left: clamp(200px, 25vw, 250px);
+    width: calc(100% - clamp(200px, 25vw, 250px));
     z-index: 100;
-    height: 60px;
+    height: clamp(50px, 8vh, 60px);
     transition: all 0.3s ease-in-out;
+    background: transparent;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
 }
 
 @media (max-width: 770px) {
@@ -129,11 +132,11 @@ body {
     }
 
     .header {
-        width: 100%;
-        left: 0;
-        padding: 1rem;
-        position: relative;
-        margin-bottom: 1rem;
+        width: calc(100% - 180px);
+        left: 180px;
+        padding: 0.8rem 1.5rem;
+        position: fixed;
+        margin-bottom: 0;
     }
 }
 
@@ -168,10 +171,10 @@ body {
 }
 
 .sidebar {
-    width: 250px;
+    width: clamp(200px, 25vw, 250px);
     height: 100vh;
     background: rgba(0, 0, 0, 0.2);
-    padding: 1rem;
+    padding: clamp(0.5rem, 2vw, 1rem);
     border-right: 1px solid rgba(255, 255, 255, 0.1);
     position: fixed;
     left: 0;
@@ -180,7 +183,94 @@ body {
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease-in-out;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
 }
+
+/* Hide sidebar on mobile by default, show hamburger menu */
+@media (max-width: 480px) {
+    .chat-area {
+        margin-left: 0;
+        width: 100%;
+        padding: clamp(0.4rem, 2vw, 0.6rem);
+        margin-top: 60px;
+        margin-bottom: 60px;
+        height: calc(100vh - 120px);
+    }
+
+    .input-area {
+        margin-left: 0;
+        width: 100%;
+        padding: clamp(0.4rem, 2vw, 0.6rem);
+        position: fixed;
+        bottom: 0;
+        background: rgba(22, 33, 62, 0.95);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        width: 140px;
+        background: rgba(0, 0, 0, 0.85);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease-in-out;
+        z-index: 150;
+    }
+
+    /* Show sidebar when active (you can toggle this with JS) */
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    /* Hamburger menu always visible */
+    .hamburger-menu {
+        display: flex;
+    }
+
+    /* Adjust chat area to full width when sidebar hidden */
+    .chat-area {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 0.6rem 1rem;
+    }
+
+    /* Adjust input area full width */
+    .input-area {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 0.6rem 1rem;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        background: #16213e;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 120;
+    }
+
+    /* Add some padding-bottom to messages to avoid overlap with input fixed */
+    .messages {
+        padding-bottom: 70px;
+        max-height: calc(100vh - 130px);
+        overflow-y: auto;
+    }
+}
+
+/* Show sidebar again when toggled */
+.sidebar.active ~ .chat-area {
+    margin-left: 140px !important;
+    width: calc(100% - 140px) !important;
+}
+
+.sidebar.active ~ .input-area {
+    margin-left: 140px !important;
+    width: calc(100% - 140px) !important;
+}
+
 
 .sidebar.collapsed {
     transform: translateX(-100%);
@@ -238,11 +328,11 @@ body {
 }
 
 @media (max-width: 768px) {
-    .sidebar {
+    /* .sidebar {
         width: 180px;
         height: 100vh;
         position: fixed;
-    }
+    } */
 
     .header {
         width: calc(100% - 180px);
@@ -401,11 +491,17 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 1rem;
-    margin-left: 250px;
-    margin-top: 60px;
-    width: calc(100% - 250px);
+    padding: clamp(0.5rem, 3vw, 1rem);
+    margin-left: clamp(200px, 25vw, 250px);
+    margin-top: clamp(60px, 10vh, 70px);
+    width: calc(100% - clamp(200px, 25vw, 250px));
+    height: calc(100vh - clamp(60px, 10vh, 70px));
     transition: all 0.3s ease-in-out;
+    position: relative;
+    background: transparent;
+    -webkit-backdrop-filter: blur(5px);
+    backdrop-filter: blur(5px);
+    overflow-y: auto;
 }
 
 @media (max-width: 768px) {
@@ -427,11 +523,16 @@ body {
 .messages {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
+    padding: clamp(0.5rem, 3vw, 1rem);
     color: #fff;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: clamp(0.5rem, 2vw, 1rem);
+    margin-bottom: clamp(50px, 10vh, 70px);
+    scroll-behavior: smooth;
+    width: 100%;
+    max-width: 100%;
+    height: calc(100vh - clamp(50px, 8vh, 60px) - clamp(50px, 10vh, 70px));
 }
 
 .message-wrapper {
@@ -457,23 +558,24 @@ body {
 }
 
 .message {
-    max-width: 70%;
-    padding: 0.8rem 1.2rem;
-    border-radius: 1.5rem;
+    max-width: clamp(60%, 65%, 70%);
+    padding: clamp(0.6rem, 2vw, 1.2rem);
+    border-radius: clamp(1rem, 3vw, 1.5rem);
     word-wrap: break-word;
     transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 @media (max-width: 770px) {
     .message {
-        max-width: 85%;
+        max-width: 80%;
         padding: 0.7rem 1rem;
     }
 }
 
 @media (max-width: 480px) {
     .message {
-        max-width: 95%;
+        max-width: 90%;
         padding: 0.6rem 0.9rem;
     }
 }
@@ -482,8 +584,12 @@ body {
     position: relative;
     width: 40px;
     height: 40px;
-    margin-top: -15px;
+    margin-top: 0;
     align-self: flex-start;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .avatar {
@@ -511,18 +617,29 @@ body {
 
 .input-area {
     display: flex;
-    gap: 0.5rem;
-    padding: 1rem 0;
+    gap: clamp(0.3rem, 0.8vw, 0.4rem);
+    padding: clamp(0.4rem, 1.5vw, 0.8rem) 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    margin-left: 250px;
-    width: calc(100% - 250px);
+    position: fixed;
+    left: calc(50% + clamp(5px, 12.5vw, 1px));
+    transform: translateX(-50%);
+    bottom: 0;
+    width: 83%;
+    max-width: 83%;
+    background: transparent;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    z-index: 50;
+    justify-content: center;
+    align-items: center;
     transition: all 0.3s ease-in-out;
 }
 
 @media (max-width: 770px) {
     .input-area {
-        margin-left: 180px;
-        width: calc(100% - 180px);
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
         padding: 0.8rem 0;
     }
 
@@ -538,10 +655,14 @@ body {
 
 @media (max-width: 480px) {
     .input-area {
-        max-width: 100%;
-        margin-left: 140px;
-        width: calc(100% - 140px);
+        max-width: 90%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90%;
         padding: 0.6rem 0;
+        position: fixed;
+        bottom: 0;
+        background: inherit;
     }
 
     .messages {
@@ -553,25 +674,33 @@ body {
 
 .message-input {
     flex: 1;
-    padding: 0.8rem 1rem;
+    padding: clamp(0.5rem, 1.5vw, 0.8rem);
     border: none;
-    border-radius: 5px;
+    border-radius: clamp(5px, 1vw, 8px);
     background: rgba(255, 255, 255, 0.1);
     color: #fff;
     outline: none;
     min-width: 0;
     width: 100%;
+    height: clamp(35px, 5vh, 40px);
+    font-size: clamp(0.875rem, 1.5vw, 1rem);
+    transition: all 0.3s ease;
 }
 
 .send-button {
-    padding: 0.8rem 1.5rem;
-    background: #4cc9f0;
+    padding: clamp(0.5rem, 1.5vw, 1rem);
+    background: linear-gradient(135deg, #4cc9f0 0%, #3aa8d8 100%);
     color: #16213e;
     border: none;
-    border-radius: 5px;
+    border-radius: clamp(5px, 1vw, 8px);
     cursor: pointer;
     font-weight: 600;
     transition: all 0.3s ease;
+    min-width: clamp(50px, 8vw, 80px);
+    height: clamp(35px, 5vh, 40px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .send-button:hover {

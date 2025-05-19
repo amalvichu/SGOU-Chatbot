@@ -37,8 +37,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (header) header.style.width = 'calc(100% - 250px)';
             if (chatArea) chatArea.style.marginLeft = '250px';
             if (chatArea) chatArea.style.width = 'calc(100% - 250px)';
-            if (inputArea) inputArea.style.marginLeft = '150px';
+            if (inputArea) inputArea.style.left = 'calc(50% + clamp(5px, 12.5vw, 1px))';
             if (inputArea) inputArea.style.width = 'calc(100% - 250px)';
+            if (inputArea) inputArea.style.right = '0';
             
             // Adjust for mobile screens
             if (window.innerWidth <= 768) {
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (chatArea) chatArea.style.width = 'calc(100% - 180px)';
                 if (inputArea) inputArea.style.marginLeft = '180px';
                 if (inputArea) inputArea.style.width = 'calc(100% - 180px)';
+                if (inputArea) inputArea.style.right = '0';
             }
             
             if (window.innerWidth <= 480) {
@@ -57,6 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (chatArea) chatArea.style.width = 'calc(100% - 140px)';
                 if (inputArea) inputArea.style.marginLeft = '140px';
                 if (inputArea) inputArea.style.width = 'calc(100% - 140px)';
+                if (inputArea) inputArea.style.right = '0';
             }
         }
     }
@@ -81,6 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (chatArea) chatArea.style.width = 'calc(100% - 140px)';
                 if (inputArea) inputArea.style.marginLeft = '140px';
                 if (inputArea) inputArea.style.width = 'calc(100% - 140px)';
+                if (inputArea) inputArea.style.right = '0';
             } else if (window.innerWidth <= 768) {
                 if (header) header.style.left = '180px';
                 if (header) header.style.width = 'calc(100% - 180px)';
@@ -88,12 +92,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (chatArea) chatArea.style.width = 'calc(100% - 180px)';
                 if (inputArea) inputArea.style.marginLeft = '180px';
                 if (inputArea) inputArea.style.width = 'calc(100% - 180px)';
+                if (inputArea) inputArea.style.right = '0';
             } else {
                 if (header) header.style.left = '250px';
                 if (header) header.style.width = 'calc(100% - 250px)';
-                if (chatArea) chatArea.style.marginLeft = '150px';
+                if (chatArea) chatArea.style.marginLeft = '250px';
                 if (chatArea) chatArea.style.width = 'calc(100% - 250px)';
-                if (inputArea) inputArea.style.marginLeft = '150px';
+                if (inputArea) inputArea.style.marginLeft = '250px';
                 if (inputArea) inputArea.style.width = 'calc(100% - 250px)';
             }
         }
