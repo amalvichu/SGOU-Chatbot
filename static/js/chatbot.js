@@ -1,4 +1,3 @@
-// Fixed version of chatbot.js with direct API integration
 
 // Function to fetch programs directly from your API
 function fetchPrograms() {

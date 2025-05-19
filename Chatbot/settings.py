@@ -78,12 +78,12 @@ WSGI_APPLICATION = 'Chatbot.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'SGOU Database',
-        'USER': 'sgou_user',
-        'PASSWORD': 'Sgou4@1',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': 'SGOU Database',
+        # 'USER': 'sgou_user',
+        # 'PASSWORD': 'Sgou4@1',
+        # 'HOST': 'localhost',
+        # 'PORT': '5432',
     }
 }
 
