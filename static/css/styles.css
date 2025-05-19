@@ -5,6 +5,81 @@
     font-family: 'Segoe UI', sans-serif;
 }
 
+/* Suggestions container styles */
+.suggestions-container {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 10px;
+    padding: 10px 0;
+    margin-bottom: 10px;
+    justify-content: center;
+    width: calc(100% - 2rem);
+    margin: 0 1rem;
+    scrollbar-width: none; /* Hide scrollbar for Firefox */
+}
+
+.suggestions-container::-webkit-scrollbar {
+    display: none; /* Hide scrollbar for Chrome/Safari */
+}
+
+@media (max-width: 768px) {
+    .suggestions-container {
+        gap: 8px;
+        padding: 8px 0;
+        justify-content: flex-start;
+        width: calc(100% - 1.6rem);
+        margin: 0 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .suggestions-container {
+        gap: 6px;
+        padding: 6px 0;
+        justify-content: flex-start;
+        width: calc(100% - 1.2rem);
+        margin: 0 0.6rem;
+    }
+}
+
+/* Individual suggestion styles */
+.suggestion {
+    padding: 8px 16px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.8) 0%, rgba(22, 33, 62, 0.9) 100%);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1), inset 0 2px 4px rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s ease;
+    font-size: clamp(0.8rem, 0.75rem + 0.3vw, 0.9rem);
+}
+
+@media (max-width: 768px) {
+    .suggestion {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .suggestion {
+        padding: 4px 8px;
+        font-size: 0.75rem;
+    }
+}
+
+.suggestion:hover {
+    background: linear-gradient(135deg, rgba(76, 201, 240, 0.9) 0%, rgba(242, 37, 133, 0.9) 100%);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.5);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #16213e;
+}
+
 body {
     height: 100vh;
     width: 100vw;
@@ -333,6 +408,22 @@ body {
     transition: all 0.3s ease-in-out;
 }
 
+@media (max-width: 768px) {
+    .chat-area {
+        margin-left: 180px;
+        width: calc(100% - 180px);
+        padding: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .chat-area {
+        margin-left: 140px;
+        width: calc(100% - 140px);
+        padding: 0.6rem;
+    }
+}
+
 .messages {
     flex: 1;
     overflow-y: auto;
@@ -375,14 +466,14 @@ body {
 
 @media (max-width: 770px) {
     .message {
-        max-width: 80%;
+        max-width: 85%;
         padding: 0.7rem 1rem;
     }
 }
 
 @media (max-width: 480px) {
     .message {
-        max-width: 90%;
+        max-width: 95%;
         padding: 0.6rem 0.9rem;
     }
 }
@@ -423,7 +514,7 @@ body {
     gap: 0.5rem;
     padding: 1rem 0;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    margin-left: 150px;
+    margin-left: 250px;
     width: calc(100% - 250px);
     transition: all 0.3s ease-in-out;
 }
@@ -447,7 +538,7 @@ body {
 
 @media (max-width: 480px) {
     .input-area {
-        max-width: 85%;
+        max-width: 100%;
         margin-left: 140px;
         width: calc(100% - 140px);
         padding: 0.6rem 0;
