@@ -79,6 +79,7 @@ WSGI_APPLICATION = 'Chatbot.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',    
         # 'NAME': 'SGOU Database',
         # 'USER': 'sgou_user',
         # 'PASSWORD': 'Sgou4@1',
