@@ -54,8 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (header) header.style.width = 'calc(100% - 180px)';
                 if (chatArea) chatArea.style.marginLeft = '180px';
                 if (chatArea) chatArea.style.width = 'calc(100% - 180px)';
-                if (inputArea) inputArea.style.marginLeft = '180px';
-                if (inputArea) inputArea.style.width = 'calc(100% - 180px)';
+                
                 if (inputArea) inputArea.style.right = '0';
             }
             
@@ -64,8 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (header) header.style.width = 'calc(100% - 140px)';
                 if (chatArea) chatArea.style.marginLeft = '140px';
                 if (chatArea) chatArea.style.width = 'calc(100% - 140px)';
-                if (inputArea) inputArea.style.marginLeft = '140px';
-                if (inputArea) inputArea.style.width = 'calc(100% - 140px)';
+                
                 if (inputArea) inputArea.style.right = '0';
             }
         }
@@ -89,16 +87,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (header) header.style.width = 'calc(100% - 140px)';
                 if (chatArea) chatArea.style.marginLeft = '140px';
                 if (chatArea) chatArea.style.width = 'calc(100% - 140px)';
-                if (inputArea) inputArea.style.marginLeft = '140px';
-                if (inputArea) inputArea.style.width = 'calc(100% - 140px)';
+                
                 if (inputArea) inputArea.style.right = '0';
             } else if (window.innerWidth <= 768) {
                 if (header) header.style.left = '180px';
                 if (header) header.style.width = 'calc(100% - 180px)';
                 if (chatArea) chatArea.style.marginLeft = '180px';
                 if (chatArea) chatArea.style.width = 'calc(100% - 180px)';
-                if (inputArea) inputArea.style.marginLeft = '180px';
-                if (inputArea) inputArea.style.width = 'calc(100% - 180px)';
+                
                 if (inputArea) inputArea.style.right = '0';
             } else {
                 if (header) header.style.left = '250px';
