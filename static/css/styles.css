@@ -53,11 +53,13 @@
     font-variation-settings: "wdth" 100;
 }
 
-.suggestion:hover {
-    background: linear-gradient(135deg, rgba(76, 201, 240, 0.9) 0%, rgba(242, 37, 133, 0.9) 100%);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.5);
-    border-color: rgba(255, 255, 255, 0.4);
-    color: #16213e;
+@media (max-width: 480px) {
+    .suggestion:hover {
+        background: linear-gradient(135deg, rgba(76, 201, 240, 0.9) 0%, rgba(242, 37, 133, 0.9) 100%);
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.25), inset 0 2px 4px rgba(255, 255, 255, 0.5);
+        border-color: rgba(255, 255, 255, 0.4);
+        color: #16213e;
+    }
 }
 
 body {
@@ -173,14 +175,13 @@ body {
     transform: translateX(-50%);
     width: 40px;
     height: 40px;
-    background: #4cc9f0;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
     z-index: 100;
-    color: #16213e;
+    color: #4cc9f0;
     font-size: 1.2rem;
     font-weight: bold;
     transition: opacity 0.3s ease-in-out;
@@ -192,18 +193,17 @@ body {
 
 .hamburger-menu {
     position: fixed;
-    top: 20px;
+    top: 10px;
     left: 20px;
     width: 40px;
     height: 40px;
-    background: #4cc9f0;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     cursor: pointer;
     z-index: 1000;
-    color: #16213e;
+    color: #4cc9f0;
     font-size: 1.2rem;
     font-weight: bold;
     transition: opacity 0.3s ease-in-out;
@@ -528,6 +528,28 @@ body {
 }
 
 @media (max-width: 480px) {
+    .suggestions-container {
+        padding-left: 0.7rem;
+        scroll-snap-type: x mandatory;
+        justify-content: flex-start;
+        scroll-padding: 0 1rem 0 2rem;
+    }
+
+    .suggestion:first-child {
+        scroll-margin-left: 2rem;
+    }
+    .suggestion {
+        scroll-snap-stop: always;
+    }
+
+    .suggestion {
+        min-width: fit-content;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+        margin-right: 8px;
+        scroll-margin-left: 1rem;
+    }
+
     .input-area {
         position: fixed !important;
         left: 0 !important;
@@ -535,49 +557,47 @@ body {
         padding: 0.6rem 1rem !important;
         transform: none !important;
         bottom: 0;
-        }
-    
+    }
+
     .sidebar.active ~ .input-area {
         margin-left: 0 !important;
         width: 100% !important;
     }
-    
+
     .hamburger-menu {
         z-index: 350;
     }
-    
+
     .sidebar-logo {
         width: clamp(50px, 10vw, 70px);
         height: clamp(50px, 10vw, 70px);
     }
-    
+
     .tab {
         padding: 0.5rem 0.6rem;
         margin-bottom: 0.3rem;
         font-size: clamp(0.3rem, 0.65rem + 0.2vw, 0.8rem);
     }
-    
-    /* Header */
+
     .header {
         width: 100% !important;
         left: 0 !important;
         padding: 0.6rem 1rem;
         height: 50px;
     }
-    
-    /* Chat area */
+
     .chat-area {
         margin-left: 0 !important;
         width: 100% !important;
     }
-    
+
     .messages {
         margin-left: 0;
         width: 100%;
         padding: 1rem;
         align-items: center;
     }
-    
+
     .message-wrapper {
         margin-left: 0;
         margin-right: 0;
@@ -586,8 +606,7 @@ body {
         padding: 0 0.5rem;
         justify-content: center;
     }
-    
-    /* Input area */
+
     .input-area {
         width: 98% !important;
         max-width: none !important;
@@ -602,7 +621,7 @@ body {
         border-top: 1px solid rgba(255, 255, 255, 0.1);
         z-index: 150;
     }
-    
+
     .message-input {
         padding: 0.7rem;
         width: calc(100% - 45px);
@@ -610,7 +629,7 @@ body {
         height: 35px;
         font-size: 0.9rem;
     }
-    
+
     .send-button {
         padding: 0;
         min-width: 35px;
