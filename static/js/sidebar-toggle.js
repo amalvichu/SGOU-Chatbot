@@ -6,9 +6,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const chatArea = document.querySelector('.chat-area');
     const inputArea = document.querySelector('.input-area');
 
-    // Initial setup - sidebar visible, hamburger hidden
+    // Initial setup - sidebar visible on desktop, hidden on mobile
+    if (sidebar) {
+        if (window.innerWidth <= 480) {
+            sidebar.classList.add('collapsed');
+        } else {
+            sidebar.classList.remove('collapsed');
+        }
+    }
     if (hamburgerMenu) {
-        hamburgerMenu.style.display = 'none';
+        hamburgerMenu.style.display = window.innerWidth <= 480 ? 'flex' : 'none';
     }
 
     // Toggle sidebar function
@@ -38,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (chatArea) chatArea.style.marginLeft = '250px';
             if (chatArea) chatArea.style.width = 'calc(100% - 250px)';
             if (inputArea) inputArea.style.left = 'calc(50% + clamp(5px, 12.5vw, 1px))';
-            if (inputArea) inputArea.style.width = 'calc(100% - 250px)';
+            if (inputArea) inputArea.style.width = '85%';
             if (inputArea) inputArea.style.right = '0';
             
             // Adjust for mobile screens
