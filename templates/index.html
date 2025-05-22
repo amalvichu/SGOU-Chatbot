@@ -47,7 +47,8 @@
                     <div class="suggestion" data-query="List all programs">List all programs</div>
                     <div class="suggestion" data-query="What are the faculties?">What are the faculties?</div>
                     <div class="suggestion" data-query="How long is the BA program?">How long is the BA program?</div>
-                    <div class="suggestion" data-query="Tell me about certification courses">Tell me about certification courses</div>
+                    <div class="suggestion" data-query="Tell me about certification courses">Tell me about certification
+                        courses</div>
                 </div>
                 <div class="input-area">
                     <input type="text" class="message-input" placeholder="Type your message here...">
@@ -56,6 +57,28 @@
             </div>
         </div>
     </section>
+
+    <script>
+        function sendMessage() {
+            const userMessage = document.getElementById("messaage-input").value;
+
+            fetch("/chat/chatbot/", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCookie('csrftoken')
+                },
+                body: JSON.stringify({ message: userMessage })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    // Display data.response in your chatbot UI
+                    console.log(data.response);
+                });
+        }
+
+    </script>
+
 </body>
 
 </html>

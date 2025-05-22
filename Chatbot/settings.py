@@ -133,3 +133,27 @@ STATICFILES_DIRS = [
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+OPENROUTER_API_KEY = "your_openrouter_key_here"
+
+
+import os
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'chatbot_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'chatbot.log'),  # Log file at project root
+        },
+    },
+    'loggers': {
+        'chatbot': {
+            'handlers': ['chatbot_file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}

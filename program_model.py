@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 class ProgramModel:
     def __init__(self):
-        self.api_url = 'http://192.168.20.2:8000/api/programmes'
+        self.api_url = 'http://192.168.20.10:8000/api/programmes'
         self.api_key = '$2y$10$M0JLrgVmX2AUUqMZkrqaKOrgaMMaVFusOVjiXkVjc1YLyqcYFY9Bi'
         self.cache = {}
         self.cache_duration = timedelta(minutes=5)
