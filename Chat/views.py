@@ -7,10 +7,10 @@ from django.views.decorators.http import require_POST
 
 
 # Constants
-UNIVERSITY_API_URL = "http://192.168.20.3:8000/api/programmes"
+UNIVERSITY_API_URL = "http://sgou.ac.in/api/programmes"
 UNIVERSITY_API_KEY = "$2y$10$M0JLrgVmX2AUUqMZkrqaKOrgaMMaVFusOVjiXkVjc1YLyqcYFY9Bi"
 OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 
 def index(request):
     return render(request, 'index.html')
@@ -113,7 +113,7 @@ def call_openrouter_api(prompt):
 
 def fetch_programs(request):
     # URL of the actual SGOU program API endpoint
-    sgou_api_url = 'https://192.168.20.3/api/programs'  # replace with actual endpoint
+    sgou_api_url = 'https://sgou.ac.in/api/programs'  # replace with actual endpoint
     
     try:
         # Call the SGOU API
@@ -139,14 +139,14 @@ def fetch_programs(request):
         }, status=500)
 
 
-# def chatbot_response(request):
-#     if request.method == 'POST':
-#         user_message = json.loads(request.body).get('message', '')
+def chatbot_response(request):
+    if request.method == 'POST':
+        user_message = json.loads(request.body).get('message', '')
 
-#         # Call local LLM
-#         llm_reply = query_local_llm(user_message)
+        # Call local LLM
+        llm_reply = query_local_llm(user_message)
 
-#         if llm_reply:
-#             return JsonResponse({'reply': llm_reply})
-#         else:
-#             return JsonResponse({'reply': 'Sorry, I couldn\'t process your request right now.'})
+        if llm_reply:
+            return JsonResponse({'reply': llm_reply})
+        else:
+            return JsonResponse({'reply': 'Sorry, I couldn\'t process your request right now.'})
