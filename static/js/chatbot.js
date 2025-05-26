@@ -1,7 +1,7 @@
 
 // Function to fetch programs directly from your API
 function fetchPrograms() {
-    const apiUrl = 'http://192.168.20.10:8000/api/programmes';
+    const apiUrl = 'http://192.168.20.3:8000/api/programmes';
     const apiKey = '$2y$10$M0JLrgVmX2AUUqMZkrqaKOrgaMMaVFusOVjiXkVjc1YLyqcYFY9Bi';
 
     return fetch(apiUrl, {
