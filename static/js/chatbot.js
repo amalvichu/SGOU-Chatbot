@@ -288,6 +288,13 @@ document.addEventListener('DOMContentLoaded', function () {
             formattedPrograms += '</ol>';
 
             addMessage('bot', formattedPrograms);
+        } else if (data.rc && Array.isArray(data.rc)) {
+            let formattedCenters = 'Here are our Regional Centers:<br><ol>';
+            data.rc.forEach(center => {
+                formattedCenters += `<li><strong>${center.rcname}</strong> - Address: ${center.rcaddress}, Contact: ${center.rcnumber}, Email: ${center.headmail}</li>`;
+            });
+            formattedCenters += '</ol>';
+            addMessage('bot', formattedCenters);
         } else if (data.message) {
             addMessage('bot', data.message);
         } else {
