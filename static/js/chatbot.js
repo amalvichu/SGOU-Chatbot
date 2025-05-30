@@ -1,14 +1,9 @@
 
 // Function to fetch programs directly from your API
 function fetchPrograms() {
-    const apiUrl = 'http://192.168.20.3:8000/api/programmes';
-    const apiKey = '$2y$10$M0JLrgVmX2AUUqMZkrqaKOrgaMMaVFusOVjiXkVjc1YLyqcYFY9Bi';
+    const apiUrl = 'http://192.168.20.9:8000/api/programmes';
 
-    return fetch(apiUrl, {
-        headers: {
-            'X-API-KEY': apiKey
-        }
-    })
+    return fetch(apiUrl, {})
         .then(response => {
             if (!response.ok) {
                 if (response.status === 401) {
@@ -222,8 +217,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Function to format program list
     function formatProgramList(text) {
-
-
         // Check if this is the programs list
         if (text.includes("Here are our current programs:")) {
             try {
@@ -260,7 +253,8 @@ document.addEventListener('DOMContentLoaded', function () {
             return text + '<div class="loading-spinner"></div>';
         }
 
-        return text; // Return original text if it's not a program list
+        // If it's not a program list or a loading message, return the original text
+        return text;
     }
 
     // Send message functionality
@@ -288,13 +282,6 @@ document.addEventListener('DOMContentLoaded', function () {
             formattedPrograms += '</ol>';
 
             addMessage('bot', formattedPrograms);
-        } else if (data.rc && Array.isArray(data.rc)) {
-            let formattedCenters = 'Here are our Regional Centers:<br><ol>';
-            data.rc.forEach(center => {
-                formattedCenters += `<li><strong>${center.rcname}</strong> - Address: ${center.rcaddress}, Contact: ${center.rcnumber}, Email: ${center.headmail}</li>`;
-            });
-            formattedCenters += '</ol>';
-            addMessage('bot', formattedCenters);
         } else if (data.message) {
             addMessage('bot', data.message);
         } else {

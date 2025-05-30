@@ -3,23 +3,23 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
 import requests
+import os
 from django.views.decorators.http import require_POST
+from dotenv import load_dotenv
 
+load_dotenv()
 
-# Constants
-UNIVERSITY_API_URL = "http://sgou.ac.in/api/programmes"
-# http://sgou.ac.in/api/lsc
-# http://sgou.ac.in/api/admission
-CENTERS_API_URL = "http://sgou.ac.in/api/rc"
-UNIVERSITY_API_KEY = "$2y$10$M0JLrgVmX2AUUqMZkrqaKOrgaMMaVFusOVjiXkVjc1YLyqcYFY9Bi"
-GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-GROQ_API_KEY = "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"
+# Load environment variables
+UNIVERSITY_API_URL = os.getenv("UNIVERSITY_API_URL")
+UNIVERSITY_API_KEY = os.getenv("UNIVERSITY_API_KEY")
+CENTERS_API_URL = os.getenv("CENTERS_API_URL")
+GROQ_API_URL = os.getenv("GROQ_API_URL")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
 SGOU_OFFICIAL_WEBSITE = "https://sgou.ac.in"
-
 
 def index(request):
     return render(request, "index.html")
-
 
 @csrf_exempt
 @require_POST
@@ -53,6 +53,13 @@ def process_query(request):
                 print(f">>> Centers response data: {centers_data}")
                 centers = centers_data.get("centers", [])
                 print(f">>> Extracted centers: {centers}")
+                
+                # For center queries, return the formatted centers directly
+                if centers:
+                    centers_html = "<ol>" + "".join([f"<li>{center}</li>" for center in centers]) + "</ol>"
+                    return JsonResponse({"message": centers_html})
+                else:
+                    return JsonResponse({"message": "No centers found."})
             else:
                 print(f">>> Centers fetch failed: {centers_response.content}")
                 return centers_response # Return error response from fetch_centers
@@ -63,8 +70,7 @@ def process_query(request):
 
             print(f">>> University API status: {university_response.status_code}")
             print(
-                f">>> University API response (preview): {university_response.text[:200]}"
-            )
+                f">>> University API response (preview): {university_response.text[:200]}")
 
             if university_response.status_code != 200:
                 return JsonResponse(
@@ -86,7 +92,6 @@ def process_query(request):
     except Exception as e:
         print(">>> ERROR in process_query:", e)
         return JsonResponse({"message": "There was an error processing your request."})
-
 
 def build_prompt(user_query, programs, centers=None):
     # Only include program list if user explicitly asks about programs
@@ -115,7 +120,7 @@ def build_prompt(user_query, programs, centers=None):
         "Do NOT offer or list academic programs unless the user explicitly asks for them. "
         "Only use numbered lists when specifically listing academic programs. "
         "IMPORTANT: When providing center details, format them as an HTML ordered list using <ol> and <li> tags. "
-        "Each center should be in its own <li> tag with all information (name, address, headname, headnumber, headmail) properly formatted with line breaks using <br> tags. "
+        "Each center should be in its own <li> tag with all information (name, address, headname, headnumber, headmail) properly formatted with line breaks using <br> tags. It must display all the name of the center"
         "Include the website link ONLY when: 1) Information is genuinely incomplete or inaccurate, 2) Response would be too large without summarization, 3) User specifically asks about centers, admissions, or program details, or 4) When suggesting official resources. Use EXACTLY this HTML format: "
         f'<a href="{SGOU_OFFICIAL_WEBSITE}" target="_blank" style="color: #0066cc; text-decoration: underline;">{SGOU_OFFICIAL_WEBSITE}</a>. '
         "Do not use markdown links. Use the HTML format provided above. "
@@ -140,7 +145,6 @@ def build_prompt(user_query, programs, centers=None):
     )
     return prompt
 
-
 def call_groq_api(prompt, programs_data, centers_data=None):
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
@@ -158,15 +162,16 @@ def call_groq_api(prompt, programs_data, centers_data=None):
     if centers_data:
         messages.append({"role": "system", "content": f"Here is the list of centers to format as HTML ordered list: {centers_data}"})
 
+    # INCREASED max_tokens for better center display
     body = {
         "model": "llama3-70b-8192",
         "messages": messages,
         "temperature": 0.7,
-        "max_tokens": 500,
+        "max_tokens": 1500,  # Increased from 500 to 1500
     }
 
     try:
-        response = requests.post(GROQ_API_URL, headers=headers, json=body, timeout=20)
+        response = requests.post(GROQ_API_URL, headers=headers, json=body, timeout=30)  # Increased timeout
         if response.status_code == 200:
             data = response.json()
             return (
@@ -181,18 +186,6 @@ def call_groq_api(prompt, programs_data, centers_data=None):
         print("Error calling Groq API:", e)
         return "Sorry, I'm unable to generate a response right now."
 
-
-import logging
-
-# Configure logging
-# logging.basicConfig(
-#     filename='chatbot_debug.log',
-#     level=logging.DEBUG,
-#     format='%(asctime)s - %(levelname)s - %(message)s'
-# )
-
-# logger = logging.getLogger(__name__)
-
 def fetch_centers(request):
     try:
         headers = {
@@ -205,6 +198,9 @@ def fetch_centers(request):
         response.raise_for_status()
         centers_data = response.json()
         
+        # Debug: Print the raw API response
+        print(f">>> Raw centers API response: {centers_data}")
+        
         # Try different possible keys for centers data
         centers_list = centers_data.get("rc", [])
         if not centers_list:
@@ -214,43 +210,61 @@ def fetch_centers(request):
         if not centers_list and isinstance(centers_data, list):
             centers_list = centers_data
             
+        print(f">>> Found {len(centers_list)} centers in API response")
+            
         if not centers_list:
             return JsonResponse({"message": "No centers found in API response."})
 
         formatted_centers = []
         for idx, center in enumerate(centers_list):
+            print(f">>> Processing center {idx + 1}: {center}")
+            
             # Try different possible field names
-            name = (center.get('rcname') or  
-                        'Unknown Center')
+            name = (center.get('rcname') or 
+                   center.get('name') or
+                   center.get('center_name') or
+                   'Unknown Center')
             
             address = (center.get('rcaddress') or 
-                           'N/A')
+                      center.get('address') or
+                      center.get('center_address') or
+                      'N/A')
 
             headname = (center.get('headname') or 
-                        'N/A')
+                       center.get('director_name') or
+                       center.get('head_name') or
+                       'N/A')
             
             headnumber = (center.get('headnumber') or
+                         center.get('director_phone') or
+                         center.get('phone') or
+                         center.get('contact_number') or
                          'N/A')
 
             headmail = (center.get('headmail') or 
-                        'N/A')
+                       center.get('director_email') or
+                       center.get('email') or
+                       center.get('contact_email') or
+                       'N/A')
 
             # Only include centers with a known name
             if name != 'Unknown Center' and name != 'N/A':
                 # Format each center with HTML formatting for better display
                 center_html = f"<strong>{name}</strong><br>Address: {address}<br>RC Director: {headname}<br>Number: {headnumber}<br>Email: <a href='mailto:{headmail}' style='color: #0066cc;'>{headmail}</a>"
                 formatted_centers.append(center_html)
+                print(f">>> Formatted center {idx + 1}: {center_html[:100]}...")
         
+        print(f">>> Total formatted centers: {len(formatted_centers)}")
         return JsonResponse({"centers": formatted_centers})
 
     except requests.exceptions.RequestException as e:
-        # logging.error(f"Error fetching centers: {e}")
+        print(f">>> Error fetching centers: {e}")
         return JsonResponse({"message": "Sorry, unable to fetch center data now."}, status=500)
     except ValueError as e:
-        # logging.error(f"Error parsing centers JSON: {e}")
+        print(f">>> Error parsing centers JSON: {e}")
         return JsonResponse({"message": "Sorry, invalid center data received."}, status=500)
     except Exception as e:
-        # logging.error(f"An unexpected error occurred: {e}")
+        print(f">>> An unexpected error occurred: {e}")
         return JsonResponse({"message": "An unexpected error occurred while fetching centers."}, status=500)
 
 def fetch_programs(request):
@@ -328,7 +342,6 @@ def fetch_programs(request):
             status=500,
         )
 
-
 def chatbot_response(request):
     if request.method == "POST":
         user_message = json.loads(request.body).get("message", "")
@@ -344,7 +357,6 @@ def chatbot_response(request):
                     "reply": f'Sorry, I couldn\'t process your request right now. Please try again or visit <a href="{SGOU_OFFICIAL_WEBSITE}" target="_blank" style="color: #0066cc; text-decoration: underline;">{SGOU_OFFICIAL_WEBSITE}</a> for more information.'
                 }
             )
-
 
 def query_local_llm(message):
     """
