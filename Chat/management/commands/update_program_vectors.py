@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from Chatbot.knowledge_base.fetch_and_embed import fetch_data, generate_embeddings
+from Chatbot.knowledge_base.data_processing import fetch_data, generate_embeddings
 
 class Command(BaseCommand):
     help = 'Updates the vector DB for SGOU programs'

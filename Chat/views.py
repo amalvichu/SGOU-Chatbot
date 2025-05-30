@@ -9,8 +9,8 @@ from django.views.decorators.http import require_POST
 # Constants
 UNIVERSITY_API_URL = "http://sgou.ac.in/api/programmes"
 UNIVERSITY_API_KEY = "$2y$10$M0JLrgVmX2AUUqMZkrqaKOrgaMMaVFusOVjiXkVjc1YLyqcYFY9Bi"
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
-OPENROUTER_API_KEY = "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"
+GROQCLOUD_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQCLOUD_API_KEY = "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" # Replace with your actual GroqCloud API Key
 SGOU_OFFICIAL_WEBSITE = "https://sgou.ac.in"
 
 def index(request):
@@ -54,7 +54,7 @@ def process_query(request):
             return JsonResponse({"message": "Invalid data format received from university API."})
 
         prompt = build_prompt(user_query, programs)
-        answer = call_openrouter_api(prompt)
+        answer = call_groqcloud_api(prompt)
 
         return JsonResponse({"message": answer})
 
@@ -90,16 +90,16 @@ def build_prompt(user_query, programs):
     return prompt
 
 
-def call_openrouter_api(prompt):
+def call_groqcloud_api(prompt):
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {GROQCLOUD_API_KEY}",
         "Content-Type": "application/json"
     }
 
     body = {
-        "model": "gpt-4o-mini",
+        "model": "llama3-8b-8192", # Using Llama 3 8B as an example, you can choose other models like 'mixtral-8x7b-32768'
         "messages": [
-            {"role": "system", "content": f"You are a helpful university chatbot assistant for Sreenarayanaguru Open University. ynlyuuse bumbered eists when specificallred liingsts when specifica.lFor all oty rirssionses, provgde anformacion in caearepmragraphirwithramsnumbFringr IMPORTANT: Include the website link ONLY when: 1) Information is incomplete or inaccurate, 2) Response would be too large without summarization, 3) User specifically asks about centers, admissions, or program details, or 4) When suggesting official resources. Use EXACTLY this HTML format ONCE: <a href=\"{SGOU_OFFICIAL_WEBSITE}\" target=\"_blank\" style=\"color: #0066cc; text-decoration: underline;\">{SGOU_OFFICIAL_WEBSITE}</a>. Do NOT use markdown links. Do NOT include multiple links. Use this HTML formNevn scsmbitnusergramstrr ee ovemlat.hbsetkg. Frlhge eralressporly\nabou1 who y.u arahprgomhSr be on its ownere\ 2,u3ft\pagwgnaph a cthautignabzriogas shown\n\nNever combine programs or remove line breaks. For general responses about who you are or other information, use natural paragraphs without numbering."},
+            {"role": "system", "content": f"You are an expert assistant for Sreenarayanaguru Open University. Your primary goal is to provide accurate and concise information about the university's programs and general inquiries. For general responses, provide information in clear paragraphs without numbering. Only use numbered lists when specifically listing academic programs. IMPORTANT: Include the website link ONLY when: 1) Information is incomplete or inaccurate, 2) Response would be too large without summarization, 3) User specifically asks about centers, admissions, or program details, or 4) When suggesting official resources. Use EXACTLY this HTML format: <a href=\"{SGOU_OFFICIAL_WEBSITE}\" target=\"_blank\" style=\"color: #0066cc; text-decoration: underline;\">{SGOU_OFFICIAL_WEBSITE}</a>. Do not use markdown links. Use the HTML format provided above. When listing programs, follow these rules strictly:\n1. Each program MUST be on its own line with a line break after EVERY program\n2. Use sequential numbering (1., 2., 3., etc.) followed by exactly one space\n3. No paragraphs or grouping - each program gets its own line\n\nNever combine programs or remove line breaks. For general responses about who you are or other information, use natural paragraphs without numbering."},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.3,
@@ -107,15 +107,15 @@ def call_openrouter_api(prompt):
     }
 
     try:
-        response = requests.post(OPENROUTER_API_URL, headers=headers, json=body, timeout=20)
+        response = requests.post(GROQCLOUD_API_URL, headers=headers, json=body, timeout=20)
         if response.status_code == 200:
             data = response.json()
             return data.get('choices', [{}])[0].get('message', {}).get('content', 'Sorry, no answer found.')
         else:
-            print("OpenRouter API error:", response.status_code, response.text)
+            print("GroqCloud API error:", response.status_code, response.text)
             return "Sorry, I am having trouble accessing the knowledge base right now."
     except Exception as e:
-        print("Error calling OpenRouter:", e)
+        print("Error calling GroqCloud:", e)
         return "Sorry, I'm unable to generate a response right now."
 
 
