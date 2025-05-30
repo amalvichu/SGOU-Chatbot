@@ -408,9 +408,9 @@ body {
 .message-input {
     flex: 1;
     padding: clamp(0.5rem, 1.5vw, 0.8rem);
-    border: none;
+    border: 1px solid rgba(76, 201, 240, 0.5); /* Futuristic border */
     border-radius: clamp(5px, 1vw, 8px);
-    background: rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, rgba(26, 26, 46, 0.7) 0%, rgba(22, 33, 62, 0.8) 100%);
     color: #fff;
     outline: none;
     min-width: 80%;
@@ -418,13 +418,27 @@ body {
     height: clamp(35px, 5vh, 40px);
     font-size: clamp(0.875rem, 1.5vw, 1rem);
     transition: all 0.3s ease;
+    box-shadow: 0 0 15px rgba(76, 201, 240, 0.3), inset 0 0 8px rgba(76, 201, 240, 0.2); /* Subtle glow */
+}
+
+.message-input::placeholder {
+    font-style: italic;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.message-input:focus {
+    border-color: #4cc9f0; /* Brighter border on focus */
+    box-shadow: 0 0 10px rgba(76, 201, 240, 0.7), inset 0 0 1px rgba(76, 201, 240, 0.5); /* Enhanced glow on focus */
+    background: linear-gradient(135deg, rgba(30, 40, 70, 0.8) 0%, rgba(25, 35, 65, 0.9) 100%); /* Slightly darker background on focus */
+    color: #f72585;
+    font-style: italic;
 }
 
 .send-button {
     padding: clamp(0.5rem, 1.5vw, 1rem);
-    background: linear-gradient(135deg, #4cc9f0 0%, #3aa8d8 100%);
+    background: linear-gradient(135deg, #4cc9f0 0%, #f72585 100%); /* Combination of blue and pink */
     color: #16213e;
-    border: none;
+    border: 1px solid rgba(76, 201, 240, 0.5); /* Futuristic border */
     border-radius: clamp(5px, 1vw, 8px);
     cursor: pointer;
     font-weight: 600;
@@ -434,10 +448,12 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    box-shadow: 0 0 15px rgba(76, 201, 240, 0.3), inset 0 0 8px rgba(76, 201, 240, 0.2); /* Subtle glow matching blue */
 }
 
 .send-button:hover {
-    background: #3aa8d8;
+    background: linear-gradient(135deg, #f72585 0%, #4cc9f0 100%); /* Invert colors on hover */
+    border-color: #f72585; /* Change border color on hover */
 }
 
 /* Media Queries - All consolidated at the end */
@@ -665,6 +681,11 @@ body {
     padding-left: 20px;
     margin: 5px 0;
 }
+
+.message.bot li {
+    margin-bottom: 6px;
+}
+
 
 .message.bot li {
     margin-bottom: 6px;
