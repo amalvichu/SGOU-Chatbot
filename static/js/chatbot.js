@@ -1,4 +1,3 @@
-
 // Function to fetch programs directly from your API
 function fetchPrograms() {
     const apiUrl = 'https://sgou.ac.in/api/programmes';
@@ -53,11 +52,12 @@ document.addEventListener('DOMContentLoaded', function () {
     const messageInput = document.querySelector('.message-input');
     const sendButton = document.querySelector('.send-button');
     const messagesContainer = document.querySelector('.messages');
+    
     // Tab-specific suggestions
     const tabSuggestions = {
         'academics': [
             'List all programs',
-            'What are the faculties?',
+            'Our Regional Centers',
             'How long is the BA program?',
             'What are the admission requirements?'
         ],
@@ -107,8 +107,6 @@ document.addEventListener('DOMContentLoaded', function () {
             suggestionsContainer.appendChild(suggestion);
         });
     }
-
-
 
     // Ensure messages container is visible immediately
     if (messagesContainer) {
@@ -257,43 +255,87 @@ document.addEventListener('DOMContentLoaded', function () {
         return text;
     }
 
-    // Send message functionality
-    function sendMessage() {
-    const messageText = messageInput.value.trim();
-    if (!messageText) return;
-
-    addMessage('user', messageText);
-    messageInput.value = '';
-    addMessage('bot', 'Processing your query...');
-
-    fetch('/process_query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: messageText }),
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.programs && Array.isArray(data.programs)) {
-            // Format numbered list with details
-            let formattedPrograms = 'Here are the programs offered at Sreenarayanaguru Open University:<br><ol>';
-            data.programs.forEach(prog => {
-                formattedPrograms += `<li><strong>${prog.name}</strong> - Duration: ${prog.duration}</li>`;
-            });
-            formattedPrograms += '</ol>';
-
-            addMessage('bot', formattedPrograms);
-        } else if (data.message) {
-            addMessage('bot', data.message);
-        } else {
-            addMessage('bot', 'Sorry, I could not process your query at this time.');
+    // New function to update existing message content
+    function updateMessage(messageElement, newText) {
+        if (messageElement) {
+            // Add a smooth transition effect
+            messageElement.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                const formattedText = formatProgramList(newText);
+                messageElement.innerHTML = formattedText;
+                messageElement.style.opacity = '1';
+                
+                // Scroll to bottom after update
+                setTimeout(() => {
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                }, 100);
+            }, 150); // Small delay for smooth transition
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        addMessage('bot', 'There was an error processing your request. Please try again.');
-    });
-}
+    }
 
+    // Send message functionality - UPDATED
+    function sendMessage() {
+        const messageText = messageInput.value.trim();
+        if (!messageText) return;
+
+        addMessage('user', messageText);
+        messageInput.value = '';
+
+        // Add a placeholder message for processing
+        const processingMessage = addMessage('bot', ' '); // Add an empty message to be updated later
+
+        // Show bouncing ball animation inside the processing message
+        let clonedBouncingBallAnimation; // Declare here to make it accessible in .then/.catch
+        const originalBouncingBallAnimation = document.getElementById('bouncingBallAnimation');
+        if (originalBouncingBallAnimation) {
+            clonedBouncingBallAnimation = originalBouncingBallAnimation.cloneNode(true);
+            clonedBouncingBallAnimation.id = 'bouncingBallAnimation-' + Date.now(); // Assign a unique ID
+            processingMessage.appendChild(clonedBouncingBallAnimation);
+            clonedBouncingBallAnimation.style.display = 'flex';
+        }
+
+        fetch('/process_query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: messageText }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            let responseText;
+            
+            if (data.programs && Array.isArray(data.programs)) {
+                // Format numbered list with details
+                responseText = 'Here are the programs offered at Sreenarayanaguru Open University:<br><ol>';
+                data.programs.forEach(prog => {
+                    responseText += `<li><strong>${prog.name}</strong> - Duration: ${prog.duration}</li>`;
+                });
+                responseText += '</ol>';
+            } else if (data.message) {
+                responseText = data.message;
+            } else {
+                responseText = 'Sorry, I could not process your query at this time.';
+            }
+
+            // Replace the processing message with the actual response
+            updateMessage(processingMessage, responseText);
+            // Hide bouncing ball animation
+            if (clonedBouncingBallAnimation) {
+                clonedBouncingBallAnimation.style.display = 'none';
+                clonedBouncingBallAnimation.remove(); // Remove the cloned animation after use
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            // Replace the processing message with error message
+            updateMessage(processingMessage, 'There was an error processing your request. Please try again.');
+            // Hide bouncing ball animation
+            if (clonedBouncingBallAnimation) {
+                clonedBouncingBallAnimation.style.display = 'none';
+                clonedBouncingBallAnimation.remove(); // Remove the cloned animation after use
+            }
+        });
+    }
 
     // Helper function to check if the message is requesting a program list
     function isProgramListRequest(message) {
@@ -314,7 +356,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return text;
     }
 
-    // Add message to chat
+    // Add message to chat - UPDATED to return message reference
     function addMessage(sender, text) {
         console.log(`Adding ${sender} message:`, text);
 
@@ -362,6 +404,9 @@ document.addEventListener('DOMContentLoaded', function () {
         setTimeout(() => {
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }, 100);
+
+        // Return reference to the message div for later updates
+        return messageDiv;
     }
 
     // Event listeners

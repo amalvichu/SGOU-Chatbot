@@ -43,7 +43,12 @@ def process_query(request):
         centers = []
         programs = []
 
-        if any(keyword in user_query.lower() for keyword in ["center", "centre", "regional center", "study center"]):
+        # Normalize user query for keyword detection to handle typos
+        normalized_query = user_query.lower()
+        center_keywords = ["center", "centre", "regional center", "study center", "cneters", "centres", "cenrets"]
+        program_keywords = ["program", "course", "study", "list programs", "show programs", "progams", "courses"]
+
+        if any(keyword in normalized_query for keyword in center_keywords):
             print(">>> Center query detected, fetching centers...")
             centers_response = fetch_centers(request)
             print(f">>> Centers response status: {centers_response.status_code}")
@@ -56,14 +61,14 @@ def process_query(request):
                 
                 # For center queries, return the formatted centers directly
                 if centers:
-                    centers_html = "<ol>" + "".join([f"<li>{center}</li>" for center in centers]) + "</ol>"
+                    centers_html = "Here are our regional centers:\n<ol>" + "".join([f"<li>{center}</li>" for center in centers]) + "</ol>"
                     return JsonResponse({"message": centers_html})
                 else:
                     return JsonResponse({"message": "No centers found."})
             else:
                 print(f">>> Centers fetch failed: {centers_response.content}")
                 return centers_response # Return error response from fetch_centers
-        else:
+        elif any(keyword in normalized_query for keyword in program_keywords):
             university_response = requests.get(
                 UNIVERSITY_API_URL, headers=university_headers, timeout=10
             )
@@ -84,10 +89,36 @@ def process_query(request):
                     {"message": "Invalid data format received from university API."}
                 )
 
-        prompt = build_prompt(user_query, programs, centers)
-        answer = call_groq_api(prompt, programs, centers)
+            prompt = build_prompt(user_query, programs, centers)
+            answer = call_groq_api(prompt, programs, centers)
 
-        return JsonResponse({"message": answer})
+            return JsonResponse({"message": answer})
+        else:
+            # If no specific keyword is detected, proceed with general query processing
+            university_response = requests.get(
+                UNIVERSITY_API_URL, headers=university_headers, timeout=10
+            )
+
+            print(f">>> University API status: {university_response.status_code}")
+            print(
+                f">>> University API response (preview): {university_response.text[:200]}")
+
+            if university_response.status_code != 200:
+                return JsonResponse(
+                    {"message": "Sorry, unable to fetch university data now."}
+                )
+
+            uni_data = university_response.json()
+            programs = uni_data.get("programme", [])
+            if not isinstance(programs, list):
+                return JsonResponse(
+                    {"message": "Invalid data format received from university API."}
+                )
+
+            prompt = build_prompt(user_query, programs, centers)
+            answer = call_groq_api(prompt, programs, centers)
+
+            return JsonResponse({"message": answer})
 
     except Exception as e:
         print(">>> ERROR in process_query:", e)
@@ -103,19 +134,20 @@ def build_prompt(user_query, programs, centers=None):
             program_name = program.get('pgm_name', 'Unknown')
             program_html_items.append(f"<li>{program_name}</li>")
         
-        program_text = f"Available Programs (format as HTML ordered list):\n<ol>{''.join(program_html_items)}</ol>\n\n"
+        program_text = f"Here are our available programs:\n<ol>{''.join(program_html_items)}</ol>\n\n"
 
     centers_text = ""
+    # Always include centers_text if centers data is available
     if centers:
         # Format centers as HTML ordered list
         centers_html_items = []
         for center in centers:
             centers_html_items.append(f"<li>{center}</li>")
         
-        centers_text = f"Available Centers (format as HTML ordered list):\n<ol>{''.join(centers_html_items)}</ol>\n\n"
+        centers_text = f"Here are our regional centers:\n<ol>{''.join(centers_html_items)}</ol>\n\n"
 
     prompt = (
-        "You are an expert assistant for Sreenarayanaguru Open University. "
+        "You are an expert assistant for we. "
         "For general responses, provide information in clear paragraphs without numbering. "
         "Do NOT offer or list academic programs unless the user explicitly asks for them. "
         "Only use numbered lists when specifically listing academic programs. "
@@ -129,13 +161,13 @@ def build_prompt(user_query, programs, centers=None):
         "2. Each program must be in its own <li> tag\n"
         "3. Include only the program name within each <li> tag\n"
         "4. Do not add any additional text or formatting within program names\n"
-        "DO NOT add any introductory sentences or paragraphs before the ordered list of programs. Start directly with the HTML <ol> tag.\n\n"
+
         "When listing centers, follow these rules strictly:\n"
         "1. Format as HTML ordered list using <ol> and <li> tags\n"
         "2. Each center must be in its own <li> tag\n"
         "3. Include all center information with proper HTML formatting\n"
         "4. Use <br> tags for line breaks within each center's information\n"
-        "DO NOT add any introductory sentences or paragraphs before the ordered list of centers. Start directly with the HTML <ol> tag.\n\n"
+
         f"{program_text}"
         f"{centers_text}"
         f"User question: {user_query}\n"
@@ -154,13 +186,13 @@ def call_groq_api(prompt, programs_data, centers_data=None):
     messages = [
         {
             "role": "system",
-            "content": "You are an official representative of Sreenarayanaguru Open University. Use 'we' instead of repeatedly saying the university name. Be direct, concise, and avoid conversational filler. Provide complete answers without asking follow-up questions that require 'yes' or 'no' responses. If a university website is mentioned, ensure it is provided as a clickable link. When asked about program duration, respond only with 'The duration is X years.' where X is the number. When listing centers, format them as an HTML ordered list using <ol> and <li> tags with proper formatting including <br> tags for line breaks within each center's information. When listing programs, format them as an HTML ordered list using <ol> and <li> tags with each program name in its own <li> tag. Only display program details when explicitly asked for a list, and then present them in HTML ordered list format.",
+            "content": "You are a helpful assistant. When asked about the duration of a program, respond ONLY with the duration in years (e.g., '3 years' or '4 years'). Do not mention the university name. If the user asks about a program, list all the programs available in that category. If the user asks about a center, list all the centers available in that category."
         },
         {"role": "user", "content": prompt},
     ]
 
     if centers_data:
-        messages.append({"role": "system", "content": f"Here is the list of centers to format as HTML ordered list: {centers_data}"})
+        messages.append({"role": "system", "content": f"Here are our regional centers: {centers_data}"})
 
     # INCREASED max_tokens for better center display
     body = {

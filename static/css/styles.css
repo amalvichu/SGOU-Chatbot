@@ -31,6 +31,64 @@
     display: none; /* Hide scrollbar for Chrome/Safari */
 }
 
+/* Bouncing Ball Animation */
+.bouncing-ball-container {
+    position: relative;
+    display: inline-flex; /* Use inline-flex to allow it to sit within text flow */
+    flex-direction: column; /* Stack ball and shadow vertically */
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    height: auto;
+    padding: 0; /* Remove padding to reduce vertical space */
+    margin: 0 2px; /* Add a small horizontal margin for spacing from text */
+    vertical-align: middle; /* Align with middle of text */
+}
+
+.bouncing-ball-container .ball {
+    height: 15px;
+    width: 15px;
+    background: #f72585; /* Match your theme */
+    border-radius: 50%;
+    animation: bounceAnimation 1s infinite;
+    z-index: 2;
+}
+
+@keyframes bounceAnimation {
+    0%, 100% {
+        transform: translateY(0) scaleX(1) scaleY(1);
+        animation-timing-function: ease-out;
+    }
+    50% {
+        transform: translateY(-25px) scaleX(1.1) scaleY(0.9); /* Halve the bounce height */
+        animation-timing-function: ease-in;
+    }
+}
+
+.bouncing-ball-container .shadow {
+    position: relative;
+    top: -2px; /* Adjust to align with the ball */
+    height: 5px;
+    width: 15px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    animation: shadowAnimation 1s infinite;
+    z-index: 1;
+}
+
+@keyframes shadowAnimation {
+    0%, 100% {
+        transform: scaleX(1) translateY(0);
+        opacity: 1;
+        animation-timing-function: ease-out;
+    }
+    50% {
+        transform: scaleX(0.5) translateY(0); /* Keep shadow scale, but ensure it's relative to new size */
+        opacity: 0.5;
+        animation-timing-function: ease-in;
+    }
+}
+
 /* Individual suggestion styles */
 .suggestion {
     padding: 8px 16px;
@@ -319,13 +377,15 @@ body {
     max-width: 100%;
     height: calc(100vh - clamp(50px, 8vh, 60px) - clamp(50px, 10vh, 70px));
     padding-left: clamp(1rem, 3vw, 2rem);
+    position: relative; /* Added for positioning bouncing ball */
 }
 
 .message-wrapper {
     display: flex;
     align-items: flex-start;
     gap: 0.8rem;
-    margin: 0.5rem 0;
+    margin-top: 0.5rem;
+    margin-bottom: 5px; /* Reduced space between messages */
     opacity: 0;
     transform: translateY(20px);
     animation: messagePopup 0.3s ease-out forwards;
@@ -345,12 +405,15 @@ body {
 }
 
 .message {
-    max-width: clamp(60%, 65%, 70%);
-    padding: clamp(0.6rem, 2vw, 1.2rem);
+    background-color: #1a1a2e;
+    color: #fff;
+    padding: 8px 12px; /* Reduced padding */
     border-radius: clamp(1rem, 3vw, 1.5rem);
+    max-width: 70%;
     word-wrap: break-word;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    font-size: clamp(0.9rem, 0.8rem + 0.5vw, 1rem);
+    line-height: 1.5;
 }
 
 .avatar-container {
@@ -430,8 +493,7 @@ body {
     border-color: #4cc9f0; /* Brighter border on focus */
     box-shadow: 0 0 10px rgba(76, 201, 240, 0.7), inset 0 0 1px rgba(76, 201, 240, 0.5); /* Enhanced glow on focus */
     background: linear-gradient(135deg, rgba(30, 40, 70, 0.8) 0%, rgba(25, 35, 65, 0.9) 100%); /* Slightly darker background on focus */
-    color: #f72585;
-    font-style: italic;
+    color: cyan;
 }
 
 .send-button {
