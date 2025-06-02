@@ -1,0 +1,57 @@
+[
+  {
+    "question": "What is the admission process for SGOU?",
+    "answer": "The admission process involves: 1) Online application submission on our official website, 2) Document verification at the regional center, 3) Fee payment, and 4) Enrollment confirmation. For detailed steps, visit <a href=\"https://sgou.ac.in\" target=\"_blank\" style=\"color: #0066cc; text-decoration: underline;\">https://sgou.ac.in</a>",
+    "keywords": ["admission", "process", "apply", "application", "enroll", "enrollment", "how to apply"]
+  },
+  {
+    "question": "What are the fee structures for different programs?",
+    "answer": "Fee structures vary by program type and duration. Generally, undergraduate programs range from ₹15,000-25,000 per year, while postgraduate programs range from ₹20,000-35,000 per year. For exact fee details of specific programs, please contact your nearest regional center or visit our official website.",
+    "keywords": ["fee", "fees", "cost", "payment", "tuition", "charges", "money", "price"]
+  },
+  {
+    "question": "How can I get study materials?",
+    "answer": "Study materials are provided through: 1) Our online learning management system (LMS), 2) Physical books available at regional centers, 3) Digital resources accessible through student portal. You can collect hard copies from your registered regional center or download them from the student portal.",
+    "keywords": ["study material", "books", "resources", "learning", "materials", "notes", "syllabus"]
+  },
+  {
+    "question": "What is the examination pattern?",
+    "answer": "SGOU follows a semester-based examination system. Examinations are conducted twice a year (June and December). The pattern includes: 1) Internal assessment (30 marks), 2) Term-end examination (70 marks). Some programs also have practical examinations and project work.",
+    "keywords": ["examination", "exam", "pattern", "marks", "assessment", "evaluation", "test"]
+  },
+  {
+    "question": "How do I access the student portal?",
+    "answer": "To access the student portal: 1) Visit the official SGOU website, 2) Click on 'Student Login', 3) Enter your enrollment number and password, 4) If you forgot your password, use the 'Forgot Password' option. For technical issues, contact the IT helpdesk.",
+    "keywords": ["student portal", "login", "access", "enrollment number", "password", "online"]
+  },
+  {
+    "question": "Can I change my regional center after enrollment?",
+    "answer": "Yes, you can change your regional center after enrollment by submitting a transfer request along with required documents and transfer fee. The request is subject to availability of seats at the desired center and approval from the university.",
+    "keywords": ["change center", "transfer", "regional center", "move", "shift center"]
+  },
+  {
+    "question": "What is the eligibility criteria for admission?",
+    "answer": "Eligibility criteria vary by program: For undergraduate programs - 10+2 or equivalent, For postgraduate programs - Bachelor's degree in relevant field, For diploma programs - 10th pass or equivalent. Age limits and specific subject requirements may apply for certain programs.",
+    "keywords": ["eligibility", "criteria", "qualification", "requirement", "eligible", "admission criteria"]
+  },
+  {
+    "question": "How do I get my degree certificate?",
+    "answer": "Degree certificates are issued after successful completion of all examinations and clearance of dues. The process involves: 1) Application for degree, 2) Verification of records, 3) Payment of degree fee, 4) Convocation attendance (optional). Certificates are usually ready within 3-6 months after final results.",
+    "keywords": ["degree", "certificate", "diploma", "convocation", "graduation", "degree certificate"]
+  },
+  {
+    "question": "What support services are available for students?",
+    "answer": "SGOU provides various support services: 1) Academic counseling at regional centers, 2) Online student support, 3) Library facilities, 4) Career guidance, 5) Placement assistance, 6) Grievance redressal mechanism, 7) Scholarship information and assistance.",
+    "keywords": ["support", "services", "help", "assistance", "counseling", "guidance", "placement"]
+  },
+  {
+    "question": "How do I contact my regional center?",
+    "answer": "You can contact your regional center through: 1) Phone numbers provided on the official website, 2) Email addresses of respective centers, 3) Physical visit during working hours (10 AM to 5 PM, Monday to Friday), 4) Online query forms. Contact details are available on our website under 'Regional Centers' section.",
+    "keywords": ["contact", "regional center", "phone", "email", "address", "reach", "get in touch"]
+  },
+  {
+    "question": "What are the assignment submission guidelines?",
+    "answer": "Assignment submission guidelines: 1) Submit assignments before the due date, 2) Follow the prescribed format and word limit, 3) Submit through online portal or at regional center, 4) Keep acknowledgment receipts, 5) Late submissions may attract penalties. Detailed guidelines are available in the student handbook.",
+    "keywords": ["assignment", "submission", "homework", "project", "deadline", "submit"]
+  }
+]

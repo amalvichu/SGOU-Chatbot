@@ -295,6 +295,8 @@ document.addEventListener('DOMContentLoaded', function () {
             clonedBouncingBallAnimation.style.display = 'flex';
         }
 
+        const startTime = Date.now(); // Record start time
+
         fetch('/process_query', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -317,23 +319,29 @@ document.addEventListener('DOMContentLoaded', function () {
                 responseText = 'Sorry, I could not process your query at this time.';
             }
 
-            // Replace the processing message with the actual response
-            updateMessage(processingMessage, responseText);
-            // Hide bouncing ball animation
-            if (clonedBouncingBallAnimation) {
-                clonedBouncingBallAnimation.style.display = 'none';
-                clonedBouncingBallAnimation.remove(); // Remove the cloned animation after use
-            }
+            const elapsedTime = Date.now() - startTime;
+            const minAnimationDisplayTime = 1000; // Minimum 1 second display for animation
+            const timeToWait = Math.max(0, minAnimationDisplayTime - elapsedTime);
+
+            setTimeout(() => {
+                updateMessage(processingMessage, responseText);
+                if (clonedBouncingBallAnimation) {
+                    clonedBouncingBallAnimation.remove();
+                }
+            }, timeToWait);
         })
         .catch(error => {
             console.error('Error:', error);
-            // Replace the processing message with error message
-            updateMessage(processingMessage, 'There was an error processing your request. Please try again.');
-            // Hide bouncing ball animation
-            if (clonedBouncingBallAnimation) {
-                clonedBouncingBallAnimation.style.display = 'none';
-                clonedBouncingBallAnimation.remove(); // Remove the cloned animation after use
-            }
+            const elapsedTime = Date.now() - startTime;
+            const minAnimationDisplayTime = 1000;
+            const timeToWait = Math.max(0, minAnimationDisplayTime - elapsedTime);
+
+            setTimeout(() => {
+                updateMessage(processingMessage, 'There was an error processing your request. Please try again.');
+                if (clonedBouncingBallAnimation) {
+                    clonedBouncingBallAnimation.remove();
+                }
+            }, timeToWait);
         });
     }
 
