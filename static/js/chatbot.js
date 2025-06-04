@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log("DOM fully loaded");
     const tabs = document.querySelectorAll('.tab');
     const messageInput = document.querySelector('.message-input');
-    const sendButton = document.querySelector('.send-button');
+    const sendButton = document.querySelector('.send');
     const messagesContainer = document.querySelector('.messages');
     
     // Tab-specific suggestions
@@ -306,7 +306,9 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(data => {
             let responseText;
             
-            if (data.programs && Array.isArray(data.programs)) {
+            if (data.answer) {
+                responseText = data.answer;
+            } else if (data.programs && Array.isArray(data.programs)) {
                 // Format numbered list with details
                 responseText = 'Here are the programs offered at Sreenarayanaguru Open University:<br><ol>';
                 data.programs.forEach(prog => {

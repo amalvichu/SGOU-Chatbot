@@ -4,6 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 import requests
 import os
+import logging
 from django.views.decorators.http import require_POST
 from dotenv import load_dotenv
 import re
@@ -21,57 +22,6 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 SGOU_OFFICIAL_WEBSITE = "https://sgou.ac.in"
 
 
-def load_faq_from_file():
-    """
-    Load FAQ data from a JSON file
-    Create a file named 'faq_data.json' in your project root
-    """
-    try:
-        faq_file_path = os.path.join(os.path.dirname(__file__), "faq_data.json")
-        if os.path.exists(faq_file_path):
-            with open(faq_file_path, "r", encoding="utf-8") as file:
-                return json.load(file)
-    except Exception as e:
-        print(f"Error loading FAQ file: {e}")
-    return FAQ_DATA  # Fallback to hardcoded data
-
-
-def similarity(a, b):
-    """Calculate similarity between two strings"""
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
-
-
-def find_best_faq_match(user_query, threshold=0.3):
-    """
-    Find the best matching FAQ based on user query
-    Returns the FAQ item if match found, None otherwise
-    """
-    faq_data = load_faq_from_file()
-    best_match = None
-    best_score = 0
-
-    user_query_lower = user_query.lower()
-
-    for faq in faq_data:
-        # Check direct keyword matches first
-        keyword_matches = sum(
-            1
-            for keyword in faq.get("keywords", [])
-            if keyword.lower() in user_query_lower
-        )
-
-        # Calculate question similarity
-        question_similarity = similarity(user_query, faq["question"])
-
-        # Combined score: keyword matches get higher weight
-        score = (keyword_matches * 0.4) + (question_similarity * 0.6)
-
-        if score > best_score and score > threshold:
-            best_score = score
-            best_match = faq
-
-    return best_match, best_score
-
 
 def index(request):
     return render(request, "index.html")
@@ -85,18 +35,46 @@ def process_query(request):
         data = json.loads(request.body)
         user_query = data.get("query", "").strip()
         print(f">>> User query: {user_query}")
+        
+        # First check questioners API
+        try:
+            api_url = "http://192.168.20.2:8000/api/questioners"
+            response = requests.get(api_url)
+            response.raise_for_status()
+            questions_data = response.json()
+            print(f"Debug: questions_data from API: {questions_data}")
+            
+            print(f"Checking API for matches to query: {user_query}")
+            for item in questions_data.get('question', []):
+                if "question" in item and "answer" in item:
+                    print(f"Comparing with API question: {item['question']}")
+                    
+                    # Prioritize exact matches
+                    if user_query.lower() == item["question"].lower():
+                        print(f"Exact API match found for: {user_query}")
+                        answer = item['answer']
+                        print(f"API answer: {answer}")
+                        return JsonResponse({"answer": answer}, status=200)
+                    
+                    # Similarity check with higher threshold for fee-related queries
+                    similarity_threshold = 0.8 if 'fee' in user_query.lower() else 0.7
+                    similarity = SequenceMatcher(None, user_query.lower(), item["question"].lower()).ratio()
+                    print(f"Similarity score: {similarity:.2f}")
+                    
+                    if similarity > similarity_threshold:
+                        print(f"Similar API match found (score: {similarity:.2f}): {item['question']}")
+                        answer = item['answer']
+                        print(f"API answer: {answer}")
+                        return JsonResponse({"answer": answer}, status=200)
+            
+            print("No matching questions found in API")
+        except Exception as e:
+            print(f"Error checking questioners API: {e}")
+            # Continue to normal processing if API check fails
+
 
         if not user_query:
             return JsonResponse({"message": "Please enter a query."})
-
-        # First, check if the query matches any FAQ
-        faq_match, faq_score = find_best_faq_match(user_query)
-        print(f">>> FAQ match score: {faq_score}")
-
-        # If we have a good FAQ match (score > 0.5), prioritize it
-        if faq_match and faq_score > 0.5:
-            print(f">>> High confidence FAQ match found: {faq_match['question']}")
-            return JsonResponse({"message": faq_match["answer"]})
 
         # Use X-API-KEY header as per your JS example
         university_headers = {
@@ -177,7 +155,7 @@ def process_query(request):
                         if isinstance(rc_id, str) and rc_id.isdigit():
                             rc_id = int(rc_id)
                         elif not isinstance(rc_id, int):
-                            rc_id = None
+                            rc_id = None  # Set to None if not a valid ID
 
                         # ✅ Use rc_name_mapping to get the rcname
                         rc_name = rc_name_mapping.get(rc_id, "N/A")
@@ -207,15 +185,17 @@ def process_query(request):
                     all_lscs_html = "Here are the Learning Support Centers:\n<ol>"
                     for lsc in lsc_data:
                         rc_id = lsc.get("lscrc")
+                        # Ensure rc_id is an integer for mapping lookup
                         if isinstance(rc_id, str) and rc_id.isdigit():
                             rc_id = int(rc_id)
                         elif not isinstance(rc_id, int):
-                            rc_id = None
+                            rc_id = None  # Set to None if not a valid ID
 
-                        # ✅ Use rc_name_mapping to get the rcname
-                        rc_name = rc_name_mapping.get(rc_id, "N/A")
-
-                        all_lscs_html += f"<li><strong>{lsc['lscname']}</strong><br>Address: {lsc['lscaddress']}<br>Contact: {lsc['lscnumber']}<br>Coordinator: {lsc['coordinatorname']}<br>Email: <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br>RC: {rc_id}<br>RC Name: {rc_name}</li>"
+                        rc_name = rc_name_mapping.get(rc_id, "N/A")  # Use the mapping
+                        print(
+                            f"DEBUG: LSC RC ID: {lsc.get('lscrc')}, Processed RC ID: {rc_id}, RC Name from mapping: {rc_name}"
+                        )
+                        all_lscs_html += f"<li><strong>{lsc['lscname']}</strong><br>Address: {lsc['lscaddress']}<br>Contact: {lsc['lscnumber']}<br>Coordinator: {lsc['coordinatorname']}<br>Email: <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br>RC: {rc_id}<br>RCNAME: {rc_name}</li>"
                     all_lscs_html += "</ol>"
                     return JsonResponse({"message": all_lscs_html})
                 else:
@@ -227,6 +207,42 @@ def process_query(request):
 
         # Normalize user query for keyword detection to handle typos
         normalized_query = user_query.lower()
+
+        # Check for clarification needed for Honours programs
+        if request.session.get('clarification_needed'):
+            print(f">>> Clarification needed for Honours program. User query: {user_query}")
+            if normalized_query == 'yes':
+                program = request.session.get('honours_program')
+                del request.session['clarification_needed']
+                del request.session['honours_program']
+                del request.session['regular_program']
+                if program:
+                    program_details_html = f"<h3>{program.get('pgm_name', 'N/A')}</h3>"
+                    program_details_html += f"<p><strong>Program Code:</strong> {program.get('pgm_code', 'N/A')}</p>"
+                    program_details_html += f"<p><strong>Category:</strong> {program.get('pgm_category', 'N/A')}</p>"
+                    program_details_html += f"<p><strong>Duration:</strong> {program.get('pgm_duration', 'N/A')}</p>"
+                    program_details_html += f"<p><strong>Description:</strong> {program.get('pgm_desc', 'N/A')}</p>"
+                    return JsonResponse({"message": program_details_html})
+                else:
+                    return JsonResponse({"message": "Sorry, I couldn't find the Honours program details."})
+            elif normalized_query == 'no':
+                program = request.session.get('regular_program')
+                del request.session['clarification_needed']
+                del request.session['honours_program']
+                del request.session['regular_program']
+                if program:
+                    program_details_html = f"<h3>{program.get('pgm_name', 'N/A')}</h3>"
+                    program_details_html += f"<p><strong>Program Code:</strong> {program.get('pgm_code', 'N/A')}</p>"
+                    program_details_html += f"<p><strong>Category:</strong> {program.get('category', 'N/A')}</p>"
+                    program_details_html += f"<p><strong>Duration:</strong> {program.get('duration', 'N/A')}</p>"
+                    program_details_html += f"<p><strong>Eligibility:</strong> {program.get('eligibility', 'N/A')}</p>"
+                    program_details_html += f"<p><strong>Description:</strong> {program.get('description', 'N/A')}</p>"
+                    return JsonResponse({"response": program_details_html})
+                else:
+                    return JsonResponse({"response": "No regular program found in session."})
+            else:
+                return JsonResponse({"response": "Please respond with 'yes' or 'no' to clarify."})
+
         center_keywords = [
             "center",
             "centre",
@@ -253,6 +269,7 @@ def process_query(request):
             "lscs",
             "learning support centers",
         ]
+        category_keywords = ["category", "field", "discipline", "stream", "branch", "type", "area"]
         regional_center_query_match = re.search(
             r"lsc(?:'s)? under regional center (\w+)", normalized_query
         )
@@ -332,6 +349,56 @@ def process_query(request):
             else:
                 print(f">>> Centers fetch failed: {centers_response.content}")
                 return centers_response  # Return error response from fetch_centers
+        elif any(keyword in normalized_query for keyword in category_keywords):
+            print(">>> Category query detected.")
+            # Extract category from user_query
+            category_name = ""
+            category_match = re.search(r"programs? (?:in|under|for)?\s*([a-zA-Z0-9\s]+)", normalized_query)
+            if category_match:
+                extracted_category = category_match.group(1).strip()
+                # Simple mapping for common abbreviations
+                if extracted_category.lower() == "ug":
+                    category_name = "Undergraduate"
+                elif extracted_category.lower() == "pg":
+                    category_name = "Postgraduate"
+                else:
+                    category_name = extracted_category
+            
+            if not category_name:
+                return JsonResponse({"message": "Please specify a category, e.g., 'programs in Arts' or 'show me programs for Science'."})
+
+            # Fetch all programs
+            university_response = requests.get(
+                UNIVERSITY_API_URL, headers=university_headers, timeout=10
+            )
+
+            if university_response.status_code != 200:
+                return JsonResponse(
+                    {"message": "Sorry, unable to fetch university data now."}
+                )
+
+            uni_data = university_response.json()
+            all_programs = uni_data.get("programme", [])
+
+            # Filter programs by category
+            print(f"DEBUG: Filtering for category: {category_name.lower()}")
+            for program in all_programs:
+                print(f"DEBUG: Program name: {program.get('pgm_name')}, Category: {program.get('pgm_category')}")
+            filtered_programs = [
+                p for p in all_programs if p.get('pgm_category', '').lower() == category_name.lower()
+            ]
+
+            if filtered_programs:
+                request.session['programs'] = filtered_programs
+                program_list_html = f"The programs we offer under {category_name.capitalize()} category are:\n<ol>"
+                for i, program in enumerate(filtered_programs):
+                    program_list_html += f"<li>{program.get('pgm_name', 'N/A')}</li>"
+                program_list_html += "</ol>"
+                program_list_html += "<p>If you would like to know about a specific program, type the corresponding number.</p>"
+                return JsonResponse({"message": program_list_html})
+            else:
+                return JsonResponse({"message": f"No programs found in the {category_name.capitalize()} category."})
+
         elif any(keyword in normalized_query for keyword in program_keywords):
             university_response = requests.get(
                 UNIVERSITY_API_URL, headers=university_headers, timeout=10
@@ -349,15 +416,100 @@ def process_query(request):
 
             uni_data = university_response.json()
             programs = uni_data.get("programme", [])
+            print(f"DEBUG: Programs data from API: {programs[:2]}") # Print first 2 programs for brevity
             if not isinstance(programs, list):
                 return JsonResponse(
                     {"message": "Invalid data format received from university API."}
                 )
 
-            prompt = build_prompt(user_query, programs, centers, faq_match)
-            answer = call_groq_api(prompt, programs, centers)
+            # Store programs in session for later retrieval
+            request.session['programs'] = programs
 
-            return JsonResponse({"message": answer})
+            program_list_html = "Here are the programs offered:\n<ol>"
+            for i, program in enumerate(programs):
+                program_list_html += f"<li>{program.get('pgm_name', 'N/A')}</li>"
+            program_list_html += "</ol>"
+            program_list_html += "<p>If you would like to know about a specific program, type the corresponding number.</p>"
+
+            return JsonResponse({"message": program_list_html})
+        # Handle specific program queries
+        elif len(normalized_query) > 3: # Avoid very short queries for specific programs
+            print(f">>> Specific program query detected: {normalized_query}")
+            university_response = requests.get(
+                UNIVERSITY_API_URL, headers=university_headers, timeout=10
+            )
+
+            if university_response.status_code != 200:
+                return JsonResponse(
+                    {"message": "Sorry, unable to fetch university data now."}
+                )
+
+            uni_data = university_response.json()
+            all_programs = uni_data.get("programme", [])
+
+            matching_programs = []
+            for program in all_programs:
+                pgm_name = program.get('pgm_name', '').lower()
+                if normalized_query in pgm_name:
+                    matching_programs.append(program)
+            
+            if len(matching_programs) > 1:
+                # Check if one is 'Honours' and the other is not
+                honours_program = None
+                regular_program = None
+                for program in matching_programs:
+                    if 'honours' in program.get('pgm_name', '').lower():
+                        honours_program = program
+                    else:
+                        regular_program = program
+                
+                if honours_program and regular_program:
+                    print(f">>> Multiple program matches found. Requesting clarification for: {regular_program.get('pgm_name', 'N/A')}")
+                    request.session['clarification_needed'] = True
+                    request.session['honours_program'] = honours_program
+                    request.session['regular_program'] = regular_program
+                    return JsonResponse({"message": f"Are you asking about the Honours version of {regular_program.get('pgm_name', 'N/A')}? Please reply with 'yes' or 'no'."})
+                elif len(matching_programs) == 1:
+                    found_program = matching_programs[0]
+            elif len(matching_programs) == 1:
+                found_program = matching_programs[0]
+            else:
+                found_program = None
+
+            if found_program:
+                print(f">>> Program found: {found_program.get('pgm_name', 'N/A')}")
+                program_details_html = f"<h3>{found_program.get('pgm_name', 'N/A')}</h3>"
+                program_details_html += f"<p><strong>Program Code:</strong> {found_program.get('pgm_code', 'N/A')}</p>"
+                program_details_html += f"<p><strong>Category:</strong> {found_program.get('pgm_category', 'N/A')}</p>"
+                program_details_html += f"<p><strong>Duration:</strong> {found_program.get('pgm_duration', 'N/A')}</p>"
+                program_details_html += f"<p><strong>Description:</strong> {found_program.get('pgm_desc', 'N/A')}</p>"
+                # Add more fields as needed based on your API response structure
+                return JsonResponse({"message": program_details_html})
+        elif user_query.isdigit():
+            stored_programs = request.session.get('programs')
+
+            # Only process as a program number if programs are actually stored in the session
+            if stored_programs and len(stored_programs) > 0:
+                program_index = int(user_query) - 1
+                if 0 <= program_index < len(stored_programs):
+                    program = stored_programs[program_index]
+                    print(f"DEBUG: Retrieved program details from session: {program}")
+                    program_details_html = f"<p><b>Program Name:</b> {program.get('pgm_name', 'N/A')}</p>"
+                    program_details_html += f"<p><b>Description:</b> {program.get('pgm_desc', 'N/A')}</p>"
+                    program_details_html += f"<p><b>Category:</b> {program.get('pgm_category', 'N/A')}</p>"
+                    program_details_html += f"<p><b>Year:</b> {program.get('pgm_year', 'N/A')}</p>"
+                    return JsonResponse({"message": program_details_html})
+                else:
+                    # If index is out of range, clear programs from session and return an error message
+                    if 'programs' in request.session:
+                        del request.session['programs']
+                    return JsonResponse({"message": "The number you entered does not correspond to an available program. Please list programs first or enter a valid program number."})
+            else:
+                # If no programs are stored in session, clear any stale 'programs' key and return an error message
+                if 'programs' in request.session:
+                    del request.session['programs']
+                return JsonResponse({"message": "Please list programs first before entering a number."})
+        # This 'else' block handles all non-digit queries
         else:
             # If no specific keyword is detected, proceed with general query processing
             university_response = requests.get(
@@ -370,31 +522,25 @@ def process_query(request):
             )
 
             if university_response.status_code != 200:
-                # If API fails and we have a moderate FAQ match, use it
-                if faq_match and faq_score > 0.3:
-                    return JsonResponse({"message": faq_match["answer"]})
                 return JsonResponse(
                     {"message": "Sorry, unable to fetch university data now."}
                 )
 
             uni_data = university_response.json()
             programs = uni_data.get("programme", [])
+            print(f"DEBUG: Programs data from API: {programs[:2]}") # Print first 2 programs for brevity
             if not isinstance(programs, list):
                 return JsonResponse(
                     {"message": "Invalid data format received from university API."}
                 )
 
-            prompt = build_prompt(user_query, programs, centers, faq_match)
+            prompt = build_prompt(user_query, programs, centers)
             answer = call_groq_api(prompt, programs, centers)
 
             return JsonResponse({"message": answer})
 
     except Exception as e:
         print(">>> ERROR in process_query:", e)
-        # Try to provide FAQ answer as fallback
-        faq_match, faq_score = find_best_faq_match(user_query)
-        if faq_match and faq_score > 0.3:
-            return JsonResponse({"message": faq_match["answer"]})
         return JsonResponse({"message": "There was an error processing your request."})
 
 
@@ -449,7 +595,7 @@ def fetch_lsc_data(regional_center_name=None):
         return None
 
 
-def build_prompt(user_query, programs, centers=None, faq_context=None):
+def build_prompt(user_query, programs, centers=None):
     # Only include program list if user explicitly asks about programs
     program_text = ""
     if any(
@@ -474,15 +620,8 @@ def build_prompt(user_query, programs, centers=None, faq_context=None):
 
         centers_text = f"Here are our regional centers:\n<ol>{''.join(centers_html_items)}</ol>\n\n"
 
-    # Include FAQ context if available
-    faq_text = ""
-    if faq_context:
-        faq_text = f"Relevant FAQ Information:\nQ: {faq_context['question']}\nA: {faq_context['answer']}\n\n"
-
     prompt = (
         "You are an expert assistant for SGOU (Sri Guru Gobind Singh Tricentenary University). "
-        "Use the provided FAQ information as your primary reference when answering questions. "
-        "If the FAQ contains relevant information, prioritize that in your response. "
         "For general responses, provide information in clear paragraphs without numbering. "
         "Do NOT offer or list academic programs unless the user explicitly asks for them. "
         "Only use numbered lists when specifically listing academic programs. "
@@ -501,7 +640,6 @@ def build_prompt(user_query, programs, centers=None, faq_context=None):
         "2. Each center must be in its own <li> tag\n"
         "3. Include all center information with proper HTML formatting\n"
         "4. Use <br> tags for line breaks within each center's information\n"
-        f"{faq_text}"
         f"{program_text}"
         f"{centers_text}"
         f"User question: {user_query}\n"
@@ -560,37 +698,6 @@ def call_groq_api(prompt, programs_data, centers_data=None):
     except Exception as e:
         print("Error calling Groq API:", e)
         return "Sorry, I'm unable to generate a response right now."
-
-
-# Add a new endpoint to manage FAQ data
-@csrf_exempt
-def manage_faqs(request):
-    """
-    Endpoint to add, update, or retrieve FAQ data
-    """
-    if request.method == "GET":
-        # Return all FAQs
-        faq_data = load_faq_from_file()
-        return JsonResponse({"faqs": faq_data})
-
-    elif request.method == "POST":
-        # Add new FAQ
-        try:
-            data = json.loads(request.body)
-            new_faq = {
-                "question": data.get("question", ""),
-                "answer": data.get("answer", ""),
-                "keywords": data.get("keywords", []),
-            }
-
-            # Here you would save to your FAQ storage (database or file)
-            # For now, just return success
-            return JsonResponse({"message": "FAQ added successfully", "faq": new_faq})
-        except Exception as e:
-            return JsonResponse({"error": str(e)}, status=400)
-
-    return JsonResponse({"error": "Method not allowed"}, status=405)
-
 
 # Rest of your existing functions remain the same...
 def fetch_centers(request):
