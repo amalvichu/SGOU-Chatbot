@@ -539,33 +539,46 @@ def process_query(request):
             all_programs = uni_data.get("programme", [])
 
             matching_programs = []
+            # Set a similarity threshold for fuzzy matching
+            similarity_threshold = 0.6
+
             for program in all_programs:
                 pgm_name = program.get('pgm_name', '').lower()
-                if normalized_query in pgm_name:
-                    matching_programs.append(program)
-            
-            if len(matching_programs) > 1:
-                # Check if one is 'Honours' and the other is not
-                honours_program = None
-                regular_program = None
-                for program in matching_programs:
-                    if 'honours' in program.get('pgm_name', '').lower():
-                        honours_program = program
-                    else:
-                        regular_program = program
+                # Calculate similarity ratio
+                similarity = SequenceMatcher(None, normalized_query, pgm_name).ratio()
                 
-                if honours_program and regular_program:
-                    print(f">>> Multiple program matches found. Requesting clarification for: {regular_program.get('pgm_name', 'N/A')}")
-                    request.session['clarification_needed'] = True
-                    request.session['honours_program'] = honours_program
-                    request.session['regular_program'] = regular_program
-                    return JsonResponse({"message": f"Are you asking about the Honours version of {regular_program.get('pgm_name', 'N/A')}? Please reply with 'yes' or 'no'."})
-                elif len(matching_programs) == 1:
-                    found_program = matching_programs[0]
-            elif len(matching_programs) == 1:
-                found_program = matching_programs[0]
+                if similarity >= similarity_threshold:
+                    matching_programs.append((program, similarity))
+            
+            # Sort by similarity in descending order to prioritize best matches
+            matching_programs.sort(key=lambda x: x[1], reverse=True)
+            matching_programs = [p[0] for p in matching_programs] # Extract only the program dicts
+
+            # Attempt to extract a program type from the query (e.g., 'BA', 'MA')
+            query_program_type = None
+            for p_type in ['ba', 'ma', 'b.sc', 'm.sc', 'b.com', 'm.com', 'phd']:
+                if normalized_query.startswith(p_type):
+                    query_program_type = p_type
+                    break
+
+            filtered_by_type_programs = []
+            if query_program_type:
+                for program in matching_programs:
+                    pgm_name_lower = program.get('pgm_name', '').lower()
+                    if pgm_name_lower.startswith(query_program_type):
+                        filtered_by_type_programs.append(program)
+            
+            programs_to_display = filtered_by_type_programs if filtered_by_type_programs else matching_programs
+
+            if len(programs_to_display) > 1:
+                request.session['programs'] = programs_to_display # Store all matching programs
+                program_list_html = "Multiple programs found. Please specify by number:\n<ol>"
+                for i, program in enumerate(programs_to_display):
+                    program_list_html += f"<li>{program.get('pgm_name', 'N/A')} ({program.get('pgm_category', 'N/A')})</li>"
+                program_list_html += "</ol>"
+                return JsonResponse({"message": program_list_html})
             else:
-                found_program = None
+                found_program = matching_programs[0] if matching_programs else None
 
             if found_program:
                 print(f">>> Program found (direct query): {found_program.get('pgm_name', 'N/A')}")
