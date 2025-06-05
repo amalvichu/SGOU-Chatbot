@@ -65,7 +65,7 @@ def process_query(request):
             "lscs",
             "learning support centers",
         ]
-        category_keywords = ["category", "field", "discipline", "stream", "branch", "type", "area", "ug", "pg"]
+        category_keywords = ["category", "field", "discipline", "stream", "branch", "type", "area", "ug", "pg", "stp", "four year", "short term", "post graduate", "under graduate", "degree"]
         
         # Check if this is a program or category related query first
         is_program_query = any(keyword in normalized_query for keyword in program_keywords)
@@ -369,9 +369,25 @@ def process_query(request):
             category_alias_map = {
                 "fyug": "FYUG",
                 "fyugp": "FYUG",  # alias for user convenience
+                "four year": "FYUG",
+                "honour": "FYUG",
+                "honours": "FYUG",
+                "short term": "STP",
+                "shortterm": "STP",
+                "short term program": "STP",
+                "short term programs": "STP",
+                "short term programmes": "STP",
+                "short term programmes": "STP",
                 "stp": "STP",
+                "ugp": "UG",
+                "ug": "UG",
                 "pg": "PG",
-                "ug": "UG"  # Put UG last so it doesn't match inside "fyug"
+                "post graduate": "PG",
+                "postgrad": "PG",
+                "postgraduates": "PG",
+                "postgraduates": "PG",
+                "ug": "UG",
+                "under graduates": "UG"  # Put UG last so it doesn't match inside "fyug"
             }
 
             matched_category = None
