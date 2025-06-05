@@ -36,41 +36,83 @@ def process_query(request):
         user_query = data.get("query", "").strip()
         print(f">>> User query: {user_query}")
         
-        # First check questioners API
-        try:
-            api_url = "http://192.168.20.2:8000/api/questioners"
-            response = requests.get(api_url)
-            response.raise_for_status()
-            questions_data = response.json()
-            print(f"Debug: questions_data from API: {questions_data}")
-            
-            print(f"Checking API for matches to query: {user_query}")
-            for item in questions_data.get('question', []):
-                if "question" in item and "answer" in item:
-                    print(f"Comparing with API question: {item['question']}")
-                    
-                    # Prioritize exact matches
-                    if user_query.lower() == item["question"].lower():
-                        print(f"Exact API match found for: {user_query}")
-                        answer = item['answer']
-                        print(f"API answer: {answer}")
-                        return JsonResponse({"answer": answer}, status=200)
-                    
-                    # Similarity check with higher threshold for fee-related queries
-                    similarity_threshold = 0.8 if 'fee' in user_query.lower() else 0.7
-                    similarity = SequenceMatcher(None, user_query.lower(), item["question"].lower()).ratio()
-                    print(f"Similarity score: {similarity:.2f}")
-                    
-                    if similarity > similarity_threshold:
-                        print(f"Similar API match found (score: {similarity:.2f}): {item['question']}")
-                        answer = item['answer']
-                        print(f"API answer: {answer}")
-                        return JsonResponse({"answer": answer}, status=200)
-            
-            print("No matching questions found in API")
-        except Exception as e:
-            print(f"Error checking questioners API: {e}")
-            # Continue to normal processing if API check fails
+        # Normalize user query for keyword detection to handle typos
+        normalized_query = user_query.lower()
+        
+        # Define keywords for different query types
+        center_keywords = [
+            "center",
+            "centre",
+            "regional center",
+            "study center",
+            "cneters",
+            "centres",
+            "cenrets",
+        ]
+        program_keywords = [
+            "program",
+            "course",
+            "study",
+            "list programs",
+            "show programs",
+            "progams",
+            "courses",
+        ]
+        lsc_keywords = [
+            "lsc",
+            "learning support center",
+            "study center",
+            "lscs",
+            "learning support centers",
+        ]
+        category_keywords = ["category", "field", "discipline", "stream", "branch", "type", "area", "ug", "pg"]
+        
+        # Check if this is a program or category related query first
+        is_program_query = any(keyword in normalized_query for keyword in program_keywords)
+        is_category_query = any(keyword in normalized_query for keyword in category_keywords)
+        is_center_query = any(keyword in normalized_query for keyword in center_keywords)
+        is_lsc_query = any(keyword in normalized_query for keyword in lsc_keywords) or re.search(r"lsc(?:'s)? under regional center (\w+)", normalized_query)
+        
+        # If this is a program, category, center, or LSC query, handle it directly instead of checking questioners API
+        if is_program_query or is_category_query or is_center_query or is_lsc_query:
+            # Continue with existing program/category/center/LSC handling code
+            pass
+        else:
+            # Only check questioners API for non-program/category/center/LSC queries
+            try:
+                api_url = "http://192.168.20.2:8000/api/questioners"
+                response = requests.get(api_url)
+                response.raise_for_status()
+                questions_data = response.json()
+                print(f"Debug: questions_data from API: {questions_data}")
+                
+                print(f"Checking API for matches to query: {user_query}")
+                for item in questions_data.get('question', []):
+                    if "question" in item and "answer" in item:
+                        print(f"Comparing with API question: {item['question']}")
+                        
+                        # Prioritize exact matches
+                        if user_query.lower() == item["question"].lower():
+                            print(f"Exact API match found for: {user_query}")
+                            answer = item['answer']
+                            print(f"API answer: {answer}")
+                            return JsonResponse({"answer": answer}, status=200)
+                        
+                        # Similarity check with higher threshold for fee-related queries
+                        similarity_threshold = 0.8 if 'fee' in user_query.lower() else 0.7
+                        similarity = SequenceMatcher(None, user_query.lower(), item["question"].lower()).ratio()
+                        print(f"Similarity score: {similarity:.2f}")
+                        
+                        if similarity > similarity_threshold:
+                            print(f"Similar API match found (score: {similarity:.2f}): {item['question']}")
+                            answer = item['answer']
+                            print(f"API answer: {answer}")
+                            return JsonResponse({"answer": answer}, status=200)
+                
+                print("No matching questions found in API")
+            except Exception as e:
+                print(f"Error checking questioners API: {e}")
+                # Continue to normal processing if API check fails
 
 
         if not user_query:
@@ -209,39 +251,6 @@ def process_query(request):
         normalized_query = user_query.lower()
 
         # Check for clarification needed for Honours programs
-        if request.session.get('clarification_needed'):
-            print(f">>> Clarification needed for Honours program. User query: {user_query}")
-            if normalized_query == 'yes':
-                program = request.session.get('honours_program')
-                del request.session['clarification_needed']
-                del request.session['honours_program']
-                del request.session['regular_program']
-                if program:
-                    program_details_html = f"<h3>{program.get('pgm_name', 'N/A')}</h3>"
-                    program_details_html += f"<p><strong>Program Code:</strong> {program.get('pgm_code', 'N/A')}</p>"
-                    program_details_html += f"<p><strong>Category:</strong> {program.get('pgm_category', 'N/A')}</p>"
-                    program_details_html += f"<p><strong>Duration:</strong> {program.get('pgm_duration', 'N/A')}</p>"
-                    program_details_html += f"<p><strong>Description:</strong> {program.get('pgm_desc', 'N/A')}</p>"
-                    return JsonResponse({"message": program_details_html})
-                else:
-                    return JsonResponse({"message": "Sorry, I couldn't find the Honours program details."})
-            elif normalized_query == 'no':
-                program = request.session.get('regular_program')
-                del request.session['clarification_needed']
-                del request.session['honours_program']
-                del request.session['regular_program']
-                if program:
-                    program_details_html = f"<h3>{program.get('pgm_name', 'N/A')}</h3>"
-                    program_details_html += f"<p><strong>Program Code:</strong> {program.get('pgm_code', 'N/A')}</p>"
-                    program_details_html += f"<p><strong>Category:</strong> {program.get('category', 'N/A')}</p>"
-                    program_details_html += f"<p><strong>Duration:</strong> {program.get('duration', 'N/A')}</p>"
-                    program_details_html += f"<p><strong>Eligibility:</strong> {program.get('eligibility', 'N/A')}</p>"
-                    program_details_html += f"<p><strong>Description:</strong> {program.get('description', 'N/A')}</p>"
-                    return JsonResponse({"response": program_details_html})
-                else:
-                    return JsonResponse({"response": "No regular program found in session."})
-            else:
-                return JsonResponse({"response": "Please respond with 'yes' or 'no' to clarify."})
 
         center_keywords = [
             "center",
@@ -349,55 +358,121 @@ def process_query(request):
             else:
                 print(f">>> Centers fetch failed: {centers_response.content}")
                 return centers_response  # Return error response from fetch_centers
-        elif any(keyword in normalized_query for keyword in category_keywords):
-            print(">>> Category query detected.")
-            # Extract category from user_query
-            category_name = ""
-            category_match = re.search(r"programs? (?:in|under|for)?\s*([a-zA-Z0-9\s]+)", normalized_query)
-            if category_match:
-                extracted_category = category_match.group(1).strip()
-                # Simple mapping for common abbreviations
-                if extracted_category.lower() == "ug":
-                    category_name = "Undergraduate"
-                elif extracted_category.lower() == "pg":
-                    category_name = "Postgraduate"
-                else:
-                    category_name = extracted_category
+                
+        elif is_program_query and is_category_query:
+            print(">>> Detected query for programs within a category")
+            print(f"DEBUG: Original query: '{normalized_query}'")
+            print(f"DEBUG: is_program_query: {is_program_query}")
+            print(f"DEBUG: is_category_query: {is_category_query}")
             
-            if not category_name:
-                return JsonResponse({"message": "Please specify a category, e.g., 'programs in Arts' or 'show me programs for Science'."})
+            # Fixed: Sort by length (longest first) to prevent "ug" matching inside "fyug"
+            category_alias_map = {
+                "fyug": "FYUG",
+                "fyugp": "FYUG",  # alias for user convenience
+                "stp": "STP",
+                "pg": "PG",
+                "ug": "UG"  # Put UG last so it doesn't match inside "fyug"
+            }
 
-            # Fetch all programs
-            university_response = requests.get(
-                UNIVERSITY_API_URL, headers=university_headers, timeout=10
-            )
+            matched_category = None
+            # Sort by length (longest first) to avoid partial matches
+            for key in sorted(category_alias_map.keys(), key=len, reverse=True):
+                if key in normalized_query:
+                    matched_category = category_alias_map[key]
+                    print(f"DEBUG: Matched '{key}' -> {matched_category}")
+                    break
 
+            if not matched_category:
+                return JsonResponse({"message": "Please mention a valid category like UG, PG, FYUG, or STP."})
+
+            university_response = requests.get(UNIVERSITY_API_URL, headers=university_headers, timeout=10)
             if university_response.status_code != 200:
-                return JsonResponse(
-                    {"message": "Sorry, unable to fetch university data now."}
-                )
+                return JsonResponse({"message": "Sorry, unable to fetch university data now."})
 
-            uni_data = university_response.json()
-            all_programs = uni_data.get("programme", [])
+            all_programs = university_response.json().get("programme", [])
 
-            # Filter programs by category
-            print(f"DEBUG: Filtering for category: {category_name.lower()}")
-            for program in all_programs:
-                print(f"DEBUG: Program name: {program.get('pgm_name')}, Category: {program.get('pgm_category')}")
-            filtered_programs = [
-                p for p in all_programs if p.get('pgm_category', '').lower() == category_name.lower()
-            ]
+            # DEBUG: print all unique categories FIRST
+            categories_found = set()
+            category_counts = {}
+            for p in all_programs:
+                cat = p.get('pgm_category', '').strip()
+                if cat:  # Only add non-empty categories
+                    categories_found.add(cat)
+                    category_counts[cat] = category_counts.get(cat, 0) + 1
+
+            print(f"DEBUG: Categories found in program data: {sorted(categories_found)}")
+            print(f"DEBUG: Category counts: {category_counts}")
+            print(f"DEBUG: Looking for matched category: '{matched_category}'")
+            
+            # Special debugging for STP
+            if matched_category == "STP":
+                print("DEBUG: Special STP debugging:")
+                stp_like_categories = []
+                for cat in categories_found:
+                    if "stp" in cat.lower() or "short" in cat.lower() or "term" in cat.lower() or "programme" in cat.lower():
+                        stp_like_categories.append(cat)
+                print(f"DEBUG: STP-like categories found: {stp_like_categories}")
+                
+                # Check if there are any programs that might be STP
+                potential_stp_programs = []
+                for p in all_programs:
+                    pgm_name = p.get('pgm_name', '').lower()
+                    pgm_cat = p.get('pgm_category', '').lower()
+                    if any(word in pgm_name or word in pgm_cat for word in ['certificate', 'short', 'term', 'skill']):
+                        potential_stp_programs.append(p)
+                print(f"DEBUG: Found {len(potential_stp_programs)} potential STP programs")
+                if potential_stp_programs:
+                    for i, prog in enumerate(potential_stp_programs[:3]):
+                        print(f"DEBUG: STP candidate {i+1}: {prog.get('pgm_name')} — Category: '{prog.get('pgm_category')}'")
+            print(f"DEBUG: About to start filtering...")
+
+            # Fixed: Try multiple matching approaches
+            filtered_programs = []
+            
+            # Method 1: Exact case match
+            for p in all_programs:
+                if p.get('pgm_category', '').strip() == matched_category:
+                    filtered_programs.append(p)
+            
+            print(f"DEBUG: Exact match found: {len(filtered_programs)} programs")
+            
+            # Method 2: Case insensitive match if exact failed
+            if not filtered_programs:
+                for p in all_programs:
+                    if p.get('pgm_category', '').strip().upper() == matched_category.upper():
+                        filtered_programs.append(p)
+                print(f"DEBUG: Case insensitive match found: {len(filtered_programs)} programs")
+            
+            # Method 3: Partial matching if still no results
+            if not filtered_programs:
+                for p in all_programs:
+                    cat = p.get('pgm_category', '').strip().upper()
+                    if matched_category.upper() in cat:
+                        filtered_programs.append(p)
+                print(f"DEBUG: Partial match found: {len(filtered_programs)} programs")
+
+            print(f"DEBUG: Matched Category: {matched_category}")
+            print(f"DEBUG: Total filtered programs: {len(filtered_programs)}")
+            
+            # Show first few programs for debugging
+            for i, prog in enumerate(filtered_programs[:5]):
+                print(f"DEBUG: {i+1}. {prog.get('pgm_name')} — Category: '{prog.get('pgm_category')}'")
 
             if filtered_programs:
                 request.session['programs'] = filtered_programs
-                program_list_html = f"The programs we offer under {category_name.capitalize()} category are:\n<ol>"
-                for i, program in enumerate(filtered_programs):
-                    program_list_html += f"<li>{program.get('pgm_name', 'N/A')}</li>"
-                program_list_html += "</ol>"
-                program_list_html += "<p>If you would like to know about a specific program, type the corresponding number.</p>"
+                program_list_html = f"Programs under {matched_category} category:<ol>"
+                for prog in filtered_programs:
+                    program_list_html += f"<li>{prog.get('pgm_name', 'N/A')}</li>"
+                program_list_html += "</ol><p>You can reply with a number to know more about a specific program.</p>"
                 return JsonResponse({"message": program_list_html})
             else:
-                return JsonResponse({"message": f"No programs found in the {category_name.capitalize()} category."})
+                available_categories = ", ".join(sorted(categories_found))
+                return JsonResponse({
+                    "message": f"No programs found under '{matched_category}' category. Available categories are: {available_categories}"
+                })
+
+
+
 
         elif any(keyword in normalized_query for keyword in program_keywords):
             university_response = requests.get(
@@ -477,12 +552,12 @@ def process_query(request):
                 found_program = None
 
             if found_program:
-                print(f">>> Program found: {found_program.get('pgm_name', 'N/A')}")
+                print(f">>> Program found (direct query): {found_program.get('pgm_name', 'N/A')}")
+                print(f"DEBUG: found_program pgm_year: {found_program.get('pgm_year')}, duration: {found_program.get('duration')}")
                 program_details_html = f"<h3>{found_program.get('pgm_name', 'N/A')}</h3>"
-                program_details_html += f"<p><strong>Program Code:</strong> {found_program.get('pgm_code', 'N/A')}</p>"
-                program_details_html += f"<p><strong>Category:</strong> {found_program.get('pgm_category', 'N/A')}</p>"
-                program_details_html += f"<p><strong>Duration:</strong> {found_program.get('pgm_duration', 'N/A')}</p>"
                 program_details_html += f"<p><strong>Description:</strong> {found_program.get('pgm_desc', 'N/A')}</p>"
+                program_details_html += f"<p><strong>Category:</strong> {found_program.get('pgm_category', 'N/A')}</p>"
+                program_details_html += f"<p><strong>year:</strong> {found_program.get('pgm_year', 'N/A')}</p>"
                 # Add more fields as needed based on your API response structure
                 return JsonResponse({"message": program_details_html})
         elif user_query.isdigit():
@@ -493,11 +568,12 @@ def process_query(request):
                 program_index = int(user_query) - 1
                 if 0 <= program_index < len(stored_programs):
                     program = stored_programs[program_index]
-                    print(f"DEBUG: Retrieved program details from session: {program}")
+                    print(f"DEBUG: Retrieved program details from session (by number): {program.get('pgm_name', 'N/A')}")
+                    print(f"DEBUG: session program pgm_year: {program.get('pgm_year')}, duration: {program.get('duration')}")
                     program_details_html = f"<p><b>Program Name:</b> {program.get('pgm_name', 'N/A')}</p>"
                     program_details_html += f"<p><b>Description:</b> {program.get('pgm_desc', 'N/A')}</p>"
                     program_details_html += f"<p><b>Category:</b> {program.get('pgm_category', 'N/A')}</p>"
-                    program_details_html += f"<p><b>Year:</b> {program.get('pgm_year', 'N/A')}</p>"
+                    program_details_html += f"<p><strong>year:</strong> {program.get('pgm_year', 'N/A')}</p>"
                     return JsonResponse({"message": program_details_html})
                 else:
                     # If index is out of range, clear programs from session and return an error message
@@ -596,19 +672,53 @@ def fetch_lsc_data(regional_center_name=None):
 
 
 def build_prompt(user_query, programs, centers=None):
+    print(f"DEBUG: Programs received by build_prompt: {programs}")
     # Only include program list if user explicitly asks about programs
     program_text = ""
-    if any(
-        keyword in user_query.lower()
-        for keyword in ["program", "course", "study", "list programs", "show programs"]
+    normalized_query = user_query.lower()
+    program_html_items = []
+    print(f"DEBUG: Programs data type: {type(programs)}")
+    print(f"DEBUG: Programs sample: {programs[:2] if programs else 'None'}")
+
+    # Check for category-specific program queries
+    category_keywords = ["ug", "pg", "diploma", "certificate", "doctoral", "post graduate", "under graduate"]
+    category_mapping = {
+        "ug": "undergraduate",
+        "under graduate": "undergraduate",
+        "pg": "postgraduate",
+        "post graduate": "postgraduate"
+    }
+    
+    found_category = None
+    for cat_kw in category_keywords:
+        if cat_kw in normalized_query and ("program" in normalized_query or "category" in normalized_query):
+            found_category = cat_kw
+            break
+
+    if found_category:
+        # Map abbreviated categories to their full names
+        search_category = category_mapping.get(found_category.lower(), found_category.lower())
+        print(f"DEBUG: Searching for category: {found_category} mapped to {search_category}")
+        filtered_programs = [p for p in programs if p.get("pgm_category", "").lower() == search_category]
+        if filtered_programs:   
+            for program in filtered_programs:
+                print(f"DEBUG: Program category: {program.get('pgm_category')}")
+                print(f"DEBUG: Program full data: {program}")
+                program_name = program.get("pgm_name", "Unknown")
+                program_html_items.append(f"<li>{program_name}</li>")
+            program_text = f"Here are our {found_category.upper()} programs:\n<ol>{''.join(program_html_items)}</ol>\n\n"
+        else:
+            program_text = f"No {found_category.upper()} programs found.\n\n"
+    elif any(
+        keyword in normalized_query
+        for keyword in ["program", "course", "study", "list programs", "show programs", "all programs", "what are the programs"]
     ):
-        # Format programs as HTML ordered list
-        program_html_items = []
+        # Format all programs as HTML ordered list
         for program in programs:
+            print(f"DEBUG: All Program category: {program.get('pgm_category')}")
             program_name = program.get("pgm_name", "Unknown")
             program_html_items.append(f"<li>{program_name}</li>")
-
-        program_text = f"Here are our available programs:\n<ol>{''.join(program_html_items)}</ol>\n\n"
+        program_text = f"Here are all our available programs:\n<ol>{''.join(program_html_items)}</ol>\n\n"
 
     centers_text = ""
     # Always include centers_text if centers data is available
@@ -840,9 +950,8 @@ def fetch_programs(request):
                         {
                             "program": {
                                 "name": program.get("pgm_name"),
-                                "description": program.get("pgm_desc"),
-                                "category": program.get("pgm_category"),
-                                "duration": program.get("pgm_year"),
+                                "description": program.get("pgm_desc"),                                "category": program.get("pgm_category"),
+                                "pgm_year": program.get("pgm_year"),
                                 "official_website": f'For more details, visit <a href="{SGOU_OFFICIAL_WEBSITE}" target="_blank" style="color: #0066cc; text-decoration: underline;">{SGOU_OFFICIAL_WEBSITE}</a>',
                             }
                         }
@@ -865,6 +974,8 @@ def fetch_programs(request):
 
         # Format programs as HTML ordered list
         program_html_items = []
+        print(f"DEBUG: Programs data type: {type(programs)}")
+        print(f"DEBUG: Programs sample: {programs[:2] if programs else 'None'}")
         for program in programs_list:
             name = program.get("pgm_name", "")
             if name:  # Only add if name exists
