@@ -838,7 +838,6 @@ def call_groq_api(prompt, programs_data, centers_data=None):
         print("Error calling Groq API:", e)
         return "Sorry, I'm unable to generate a response right now."
 
-# Rest of your existing functions remain the same...
 def fetch_centers(request):
     try:
         headers = {
