@@ -36,6 +36,12 @@ def process_query(request):
         user_query = data.get("query", "").strip()
         print(f">>> User query: {user_query}")
         
+        # Define headers for API calls early
+        university_headers = {
+            "X-API-KEY": UNIVERSITY_API_KEY,
+            "Accept": "application/json",
+        }
+        
         # Normalize user query for keyword detection to handle typos
         normalized_query = user_query.lower()
         
@@ -74,8 +80,47 @@ def process_query(request):
         is_lsc_query = any(keyword in normalized_query for keyword in lsc_keywords) or re.search(r"lsc(?:'s)? under regional center (\w+)", normalized_query)
         
         # If this is a program, category, center, or LSC query, handle it directly instead of checking questioners API
-        if is_program_query or is_category_query or is_center_query or is_lsc_query:
-            # Continue with existing program/category/center/LSC handling code
+        field_keywords = ['category', 'year', 'years', 'duration', 'description', 'desc', 'details']
+        is_field_query = any(keyword in normalized_query for keyword in field_keywords) and ('of' in normalized_query or 'for' in normalized_query)
+
+        # If this is a field query for a program, handle it first
+        if is_field_query:
+            print(f">>> Field query detected: {normalized_query}")
+            try:
+                print(f">>> Attempting to connect to University API: {UNIVERSITY_API_URL}")
+                university_response = requests.get(UNIVERSITY_API_URL, headers=university_headers, timeout=15)  # Increased timeout
+                print(f">>> University API status: {university_response.status_code}")
+                
+                if university_response.status_code == 200:
+                    uni_data = university_response.json()
+                    all_programs = uni_data.get("programme", [])
+                    print(f">>> Retrieved {len(all_programs)} programs from API")
+                    
+                    if not all_programs:
+                        print(">>> Warning: No programs returned from API")
+                        return JsonResponse({"message": "Sorry, no program data is currently available. Please try again later."})
+                    
+                    field_response = handle_specific_program_field_query(user_query, all_programs)
+                    print(f">>> Field response: {field_response}")
+                    
+                    if field_response:
+                        return JsonResponse({"message": field_response})
+                    else:
+                        print(">>> No field response returned")
+                        return JsonResponse({"message": f"Sorry, I couldn't find information about that specific field for the program. Please try a different query."})
+                else:
+                    print(f">>> University API error: Status {university_response.status_code}, Response: {university_response.text[:200]}")
+                    return JsonResponse({"message": f"Sorry, there was an issue connecting to the university database (Status: {university_response.status_code}). Please try again later."})
+            except requests.exceptions.ConnectionError as e:
+                print(f">>> Connection error to University API: {str(e)}")
+                return JsonResponse({"message": "Sorry, unable to connect to the university database. Please check your internet connection and try again later."})
+            except requests.exceptions.Timeout as e:
+                print(f">>> Timeout error to University API: {str(e)}")
+                return JsonResponse({"message": "Sorry, the connection to the university database timed out. Please try again later."})
+            except Exception as e:
+                print(f">>> Error in field query handling: {str(e)}")
+                return JsonResponse({"message": "Sorry, there was an unexpected error processing your request. Please try again later."})
+        elif is_program_query or is_category_query or is_center_query or is_lsc_query:            # Continue with existing program/category/center/LSC handling code
             pass
         else:
             # Only check questioners API for non-program/category/center/LSC queries
@@ -118,11 +163,7 @@ def process_query(request):
         if not user_query:
             return JsonResponse({"message": "Please enter a query."})
 
-        # Use X-API-KEY header as per your JS example
-        university_headers = {
-            "X-API-KEY": UNIVERSITY_API_KEY,
-            "Accept": "application/json",
-        }
+        # Headers already defined at the beginning of the function
 
         # Call the university API with correct header
         centers = []
@@ -524,19 +565,29 @@ def process_query(request):
 
             return JsonResponse({"message": program_list_html})
         # Handle specific program queries
+
+        # Handle general specific program queries
         elif len(normalized_query) > 3: # Avoid very short queries for specific programs
             print(f">>> Specific program query detected: {normalized_query}")
-            university_response = requests.get(
-                UNIVERSITY_API_URL, headers=university_headers, timeout=10
-            )
+            
+            try:
+                # Fetch university data first
+                university_response = requests.get(UNIVERSITY_API_URL, headers=university_headers, timeout=15)
+                
+                if university_response.status_code != 200:
+                    return JsonResponse(
+                        {"message": "Sorry, unable to fetch university data now."}
+                    )
 
-            if university_response.status_code != 200:
-                return JsonResponse(
-                    {"message": "Sorry, unable to fetch university data now."}
-                )
-
-            uni_data = university_response.json()
-            all_programs = uni_data.get("programme", [])
+                uni_data = university_response.json()
+                all_programs = uni_data.get("programme", [])
+                
+                if not all_programs:
+                    return JsonResponse({"message": "Sorry, no program data is currently available. Please try again later."})
+            except Exception as e:
+                print(f">>> ERROR in process_query: {str(e)}")
+                return JsonResponse({"message": "There was an error processing your request."})
+                
 
             matching_programs = []
             # Set a similarity threshold for fuzzy matching
@@ -698,6 +749,85 @@ def fetch_lsc_data(regional_center_name=None):
     except requests.exceptions.RequestException as e:
         print(f"Error fetching LSC data: {e}")
         return None
+
+def handle_specific_program_field_query(user_query, all_programs):
+    """
+    Handle queries asking for specific fields of specific programs
+    e.g., "category of MA History", "duration of BA English", etc.
+    """
+    normalized_query = user_query.lower()
+    
+    # Define field keywords and their corresponding API fields
+    field_mapping = {
+        'category': 'pgm_category',
+        'year': 'pgm_year', 
+        'years': 'pgm_year',
+        'duration': 'pgm_year',
+        'description': 'pgm_desc',
+        'desc': 'pgm_desc',
+        'details': 'pgm_desc'
+    }
+    
+    # Check if query contains field keywords
+    detected_field = None
+    api_field = None
+    for field_keyword, api_field_name in field_mapping.items():
+        if field_keyword in normalized_query:
+            detected_field = field_keyword
+            api_field = api_field_name
+            break
+    
+    if not detected_field:
+        return None
+    
+    # Extract program name from query - be more specific
+    query_for_program = normalized_query
+    # Remove the field keyword and connecting words more carefully
+    for field_kw in field_mapping.keys():
+        # Replace field keyword with space to avoid merging words
+        query_for_program = query_for_program.replace(field_kw, ' ')
+    # Replace connecting words with spaces
+    query_for_program = query_for_program.replace(' of ', ' ').replace(' for ', ' ').replace(' the ', ' ')
+    # Clean up extra spaces and trim
+    query_for_program = ' '.join(query_for_program.split()).strip()
+    
+    print(f"DEBUG: Looking for program: '{query_for_program}'")
+    
+    # Find matching program with appropriate similarity threshold for field queries
+    best_match = None
+    best_similarity = 0
+    similarity_threshold = 0.6  # Lowered threshold to better match program names
+    
+    for program in all_programs:
+        pgm_name = program.get('pgm_name', '').lower()
+        similarity = SequenceMatcher(None, query_for_program, pgm_name).ratio()
+        
+        print(f"DEBUG: Comparing '{query_for_program}' with '{pgm_name}' - Similarity: {similarity}")
+        
+        if similarity >= similarity_threshold and similarity > best_similarity:
+            best_match = program
+            best_similarity = similarity
+    
+    if not best_match:
+        return f"Sorry, I couldn't find a program matching '{query_for_program}'. Please be more specific with the program name."
+    
+    program_name = best_match.get('pgm_name', 'N/A')
+    field_value = best_match.get(api_field, 'N/A')
+    
+    print(f"DEBUG: Found program: {program_name}, Field: {detected_field}, Value: {field_value}")
+    
+    # Format response based on field type
+    if detected_field in ['category']:
+        return f"The category of <strong>{program_name}</strong> is: <strong>{field_value}</strong>"
+    elif detected_field in ['year', 'years', 'duration']:
+        return f"The duration of <strong>{program_name}</strong> is: <strong>{field_value}</strong>"
+    elif detected_field in ['description', 'desc', 'details']:
+        # Check if field_value is empty or N/A
+        if field_value == 'N/A' or not field_value:
+            return f"<strong>Description of {program_name}:</strong><br><br>Sorry, no description is available for this program."
+        return f"<strong>Description of {program_name}:</strong><br><br>{field_value}"
+    else:
+        return f"<strong>{detected_field.title()} of {program_name}:</strong> {field_value}"
 
 
 def build_prompt(user_query, programs, centers=None):
