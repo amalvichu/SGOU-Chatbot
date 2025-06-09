@@ -756,21 +756,29 @@ button {
         padding-left: clamp(1.5rem, 4vw, 2rem);
         overflow-x: hidden;
     }
+
+    /* Adjust chat area and input area when sidebar is collapsed */
+    .sidebar.collapsed ~ .chat-area {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        width: 100% !important;
+        max-width: 700px; /* Adjust as needed for optimal centering */
+    }
+
+    .sidebar.collapsed ~ .input-area {
+        width: 90% !important;
+        max-width: 700px; /* Adjust as needed for optimal centering */
+        left: 50%;
+        transform: translateX(-50%);
+    }
 }
 
 @media (max-width: 480px) {
     .suggestions-container {
-        padding-left: 0.7rem;
+        padding-left: 0; /* Adjusted to ensure first suggestion is visible */
         scroll-snap-type: x mandatory;
         justify-content: flex-start;
-        scroll-padding: 0 1rem 0 2rem;
-    }
-
-    .suggestion:first-child {
-        scroll-margin-left: 2rem;
-    }
-    .suggestion {
-        scroll-snap-stop: always;
+        scroll-padding: 0 1rem 0 0; /* Set scroll-padding-left to 0 */
     }
 
     .suggestion {
@@ -778,7 +786,10 @@ button {
         scroll-snap-align: start;
         scroll-snap-stop: always;
         margin-right: 8px;
-        scroll-margin-left: 1rem;
+    }
+
+    .suggestion:first-child {
+        margin-left: 2rem; /* Ensure the first suggestion is not hidden */
     }
 
     .input-area {
@@ -862,11 +873,262 @@ button {
     }
 
     .send-button {
+        width: 45px;
+        height: 30px;
         padding: 0;
-        min-width: 35px;
-        width: 35px;
+    }
+
+    button:hover .star-1 {
+        top: -60%;
+        left: -30%;
+        width: 20px;
+    }
+
+    button:hover .star-2 {
+        top: -15%;
+        left: 5%;
+        width: 12px;
+    }
+
+    button:hover .star-3 {
+        top: 45%;
+        left: 20%;
+        width: 4px;
+    }
+
+    button:hover .star-4 {
+        top: 25%;
+        left: 70%;
+        width: 6px;
+    }
+
+    button:hover .star-5 {
+        top: 20%;
+        left: 100%;
+        width: 12px;
+    }
+
+    button:hover .star-6 {
+        top: 5%;
+        left: 50%;
+        width: 4px;
+    }
+}
+
+@media (max-width: 480px) {
+    .suggestions-container {
+        padding-left: 0; /* Adjusted to ensure first suggestion is visible */
+        scroll-snap-type: x mandatory;
+        justify-content: flex-start;
+        scroll-padding: 0 1rem 0 0; /* Set scroll-padding-left to 0 */
+    }
+
+    .suggestion {
+        min-width: fit-content;
+        scroll-snap-align: start;
+        scroll-snap-stop: always;
+        margin-right: 8px;
+    }
+
+    .suggestion:first-child {
+        margin-left: 2rem; /* Ensure the first suggestion is not hidden */
+    }
+
+    .input-area {
+        position: fixed !important;
+        left: 0 !important;
+        width: 100% !important;
+        padding: 0.6rem 1rem !important;
+        transform: none !important;
+        bottom: 0;
+    }
+
+    .sidebar.active ~ .input-area {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    .hamburger-menu {
+        z-index: 350;
+    }
+
+    .sidebar-logo {
+        width: clamp(50px, 10vw, 70px);
+        height: clamp(50px, 10vw, 70px);
+    }
+
+    .tab {
+        padding: 0.5rem 0.6rem;
+        margin-bottom: 0.3rem;
+        font-size: clamp(0.3rem, 0.65rem + 0.2vw, 0.8rem);
+    }
+
+    .header {
+        width: 100% !important;
+        left: 0 !important;
+        padding: 0.6rem 1rem;
+        height: 50px;
+    }
+
+    .chat-area {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
+    .messages {
+        margin-left: 0;
+        width: 100%;
+        padding: 1rem;
+        align-items: center;
+    }
+
+    .message-wrapper {
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        max-width: 100%;
+        padding: 0 0.5rem;
+        justify-content: center;
+    }
+
+    .input-area {
+        width: 98% !important;
+        max-width: none !important;
+        padding: 0.6rem;
+        position: fixed;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(22, 33, 62, 0.95);
+        -webkit-backdrop-filter: blur(10px);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        z-index: 150;
+    }
+
+    .message-input {
+        padding: 0.7rem;
+        width: calc(100% - 45px);
+        min-width: 0;
         height: 35px;
+        font-size: 0.9rem;
+    }
+
+    .send-button {
+        width: 35px;
+        height: 25px;
         border-radius: 8px;
+    }
+}
+
+.message.bot ol {
+    padding-left: 20px;
+    margin: 5px 0;
+}
+
+.message.bot li {
+    margin-bottom: 6px;
+}
+
+
+.message.bot li {
+    margin-bottom: 6px;
+}
+
+@media (max-width: 480px) {
+    .bouncing-ball-container {
+        position: relative;
+        display: inline-flex; /* Use inline-flex to allow it to sit within text flow */
+        flex-direction: column; /* Stack ball and shadow vertically */
+        align-items: center;
+        justify-content: center;
+        width: auto;
+        height: auto;
+        padding: 0; /* Remove padding to reduce vertical space */
+        margin: 0 2px; /* Add a small horizontal margin for spacing from text */
+        vertical-align: middle; /* Align with middle of text */
+    }
+
+    .bouncing-ball-container .ball {
+        height: 15px;
+        width: 15px;
+        background: #f72585; /* Match your theme */
+        border-radius: 50%;
+        animation: bounceAnimation 1s infinite;
+        z-index: 2;
+    }
+
+    @keyframes bounceAnimation {
+        0%, 100% {
+            transform: translateY(0) scaleX(1) scaleY(1);
+            animation-timing-function: ease-out;
+        }
+        50% {
+            transform: translateY(-25px) scaleX(1.1) scaleY(0.9); /* Halve the bounce height */
+            animation-timing-function: ease-in;
+        }
+    }
+
+    .bouncing-ball-container .shadow {
+        position: relative;
+        top: -2px; /* Adjust to align with the ball */
+        height: 5px;
+        width: 15px;
+        background-color: rgba(0, 0, 0, 0.5);
+        border-radius: 50%;
+        animation: shadowAnimation 1s infinite;
+        z-index: 1;
+    }
+
+    @keyframes shadowAnimation {
+        0%, 100% {
+            transform: scaleX(1) translateY(0);
+            opacity: 1;
+            animation-timing-function: ease-out;
+        }
+        50% {
+            transform: scaleX(0.5) translateY(0); /* Keep shadow scale, but ensure it's relative to new size */
+            opacity: 0.5;
+            animation-timing-function: ease-in;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .message-wrapper {
+            /* Removed justify-content: center; to align with bot messages */
+            padding: 0;
+            justify-content: flex-start; /* Align to the start for bot messages */
+        }
+
+        .bouncing-ball-container .ball {
+            height: 15px; /* Increased size */
+            width: 15px; /* Increased size */
+        }
+
+        .bouncing-ball-container .shadow {
+            height: 5px; /* Increased size */
+            width: 15px; /* Increased size */
+        }
+
+        @keyframes bounceAnimation {
+            0%, 100% {
+                transform: translateY(0) scaleX(1) scaleY(1);
+            }
+            50% {
+                transform: translateY(-25px) scaleX(1.1) scaleY(0.9); /* Adjusted bounce height */
+            }
+        }
+
+        @keyframes shadowAnimation {
+            0%, 100% {
+                transform: scaleX(1) translateY(0);
+                opacity: 1;
+            }
+            50% {
+                transform: scaleX(0.5) translateY(0);
+                opacity: 0.5;
+            }
+        }
     }
 }
 

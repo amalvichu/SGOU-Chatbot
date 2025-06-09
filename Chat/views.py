@@ -22,9 +22,42 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 SGOU_OFFICIAL_WEBSITE = "https://sgou.ac.in"
 
 
-
 def index(request):
     return render(request, "index.html")
+
+
+def enhanced_keyword_matching(user_query, api_question):
+    """
+    Enhanced keyword matching that checks for common words and phrases
+    """
+    user_words = set(user_query.lower().split())
+    api_words = set(api_question.lower().split())
+    
+    # Calculate word overlap
+    common_words = user_words.intersection(api_words)
+    word_overlap_ratio = len(common_words) / max(len(user_words), len(api_words))
+    
+    # Check for key phrases
+    user_lower = user_query.lower()
+    api_lower = api_question.lower()
+    
+    # Common question patterns
+    question_patterns = [
+        "what is", "what are", "how to", "when is", "when are", "where is", "where are",
+        "full form", "meaning of", "definition of", "eligibility", "admission", "fee",
+        "duration", "course", "program", "certificate", "degree"
+    ]
+    
+    pattern_matches = 0
+    for pattern in question_patterns:
+        if pattern in user_lower and pattern in api_lower:
+            pattern_matches += 1
+    
+    # Boost score if patterns match
+    if pattern_matches > 0:
+        word_overlap_ratio += 0.2 * pattern_matches
+    
+    return word_overlap_ratio
 
 
 @csrf_exempt
@@ -35,6 +68,9 @@ def process_query(request):
         data = json.loads(request.body)
         user_query = data.get("query", "").strip()
         print(f">>> User query: {user_query}")
+        
+        if not user_query:
+            return JsonResponse({"message": "Please enter a query."})
         
         # Define headers for API calls early
         university_headers = {
@@ -47,31 +83,22 @@ def process_query(request):
         
         # Define keywords for different query types
         center_keywords = [
-            "center",
-            "centre",
-            "regional center",
-            "study center",
-            "cneters",
-            "centres",
-            "cenrets",
+            "center", "centre", "regional center", "study center", 
+            "cneters", "centres", "cenrets",
         ]
         program_keywords = [
-            "program",
-            "course",
-            "study",
-            "list programs",
-            "show programs",
-            "progams",
-            "courses",
+            "program", "course", "study", "list programs", "show programs", 
+            "progams", "courses",
         ]
         lsc_keywords = [
-            "lsc",
-            "learning support center",
-            "study center",
-            "lscs",
-            "learning support centers",
+            "lsc", "learning support center", "study center", 
+            "lscs", "learning support centers",
         ]
-        category_keywords = ["category", "field", "discipline", "stream", "branch", "type", "area", "ug", "pg", "stp", "four year", "short term", "post graduate", "under graduate", "degree"]
+        category_keywords = [
+            "category", "field", "discipline", "stream", "branch", "type", "area", 
+            "ug", "pg", "stp", "four year", "short term", "post graduate", 
+            "under graduate", "degree"
+        ]
         
         # Check if this is a program or category related query first
         is_program_query = any(keyword in normalized_query for keyword in program_keywords)
@@ -79,7 +106,7 @@ def process_query(request):
         is_center_query = any(keyword in normalized_query for keyword in center_keywords)
         is_lsc_query = any(keyword in normalized_query for keyword in lsc_keywords) or re.search(r"lsc(?:'s)? under regional center (\w+)", normalized_query)
         
-        # If this is a program, category, center, or LSC query, handle it directly instead of checking questioners API
+        # Check field queries
         field_keywords = ['category', 'year', 'years', 'duration', 'description', 'desc', 'details']
         is_field_query = any(keyword in normalized_query for keyword in field_keywords) and ('of' in normalized_query or 'for' in normalized_query)
 
@@ -88,7 +115,7 @@ def process_query(request):
             print(f">>> Field query detected: {normalized_query}")
             try:
                 print(f">>> Attempting to connect to University API: {UNIVERSITY_API_URL}")
-                university_response = requests.get(UNIVERSITY_API_URL, headers=university_headers, timeout=15)  # Increased timeout
+                university_response = requests.get(UNIVERSITY_API_URL, headers=university_headers, timeout=15)
                 print(f">>> University API status: {university_response.status_code}")
                 
                 if university_response.status_code == 200:
@@ -120,54 +147,72 @@ def process_query(request):
             except Exception as e:
                 print(f">>> Error in field query handling: {str(e)}")
                 return JsonResponse({"message": "Sorry, there was an unexpected error processing your request. Please try again later."})
-        elif is_program_query or is_category_query or is_center_query or is_lsc_query:            # Continue with existing program/category/center/LSC handling code
-            pass
-        else:
-            # Only check questioners API for non-program/category/center/LSC queries
+        
+        # IMPROVED: Check questioners API for ALL non-specific queries (not just non-program/category/center/LSC)
+        # Only skip API check for very specific structural queries like "list all programs" or "show all centers"
+        skip_api_check = (
+            (is_program_query and any(word in normalized_query for word in ["list", "show", "all"])) or
+            (is_center_query and any(word in normalized_query for word in ["list", "show", "all"])) or
+            (is_lsc_query and any(word in normalized_query for word in ["list", "show", "all"]))
+        )
+        
+        if not skip_api_check:
             try:
-                api_url = "http://192.168.20.2:8000/api/questioners"
-                response = requests.get(api_url)
+                api_url = "https://sgou.ac.in/api/questioners"
+                print(f">>> Checking questioners API for query: {user_query}")
+                response = requests.get(api_url, timeout=10)
                 response.raise_for_status()
                 questions_data = response.json()
-                print(f"Debug: questions_data from API: {questions_data}")
+                print(f">>> Questions data structure: {type(questions_data)}")
                 
-                print(f"Checking API for matches to query: {user_query}")
-                for item in questions_data.get('question', []):
+                best_match = None
+                best_similarity = 0
+                
+                questions_list = questions_data.get('question', [])
+                print(f">>> Found {len(questions_list)} questions in API")
+                
+                for item in questions_list:
                     if "question" in item and "answer" in item:
-                        print(f"Comparing with API question: {item['question']}")
+                        api_question = item["question"]
+                        api_answer = item["answer"]
                         
-                        # Prioritize exact matches
-                        if user_query.lower() == item["question"].lower():
-                            print(f"Exact API match found for: {user_query}")
-                            answer = item['answer']
-                            print(f"API answer: {answer}")
-                            return JsonResponse({"answer": answer}, status=200)
+                        # Check for exact match first (highest priority)
+                        if user_query.lower().strip() == api_question.lower().strip():
+                            print(f">>> EXACT MATCH found: {api_question}")
+                            return JsonResponse({"answer": api_answer}, status=200)
                         
-                        # Similarity check with higher threshold for fee-related queries
-                        similarity_threshold = 0.8 if 'fee' in user_query.lower() else 0.7
-                        similarity = SequenceMatcher(None, user_query.lower(), item["question"].lower()).ratio()
-                        print(f"Similarity score: {similarity:.2f}")
+                        # Enhanced similarity calculation
+                        sequence_similarity = SequenceMatcher(None, user_query.lower(), api_question.lower()).ratio()
+                        keyword_similarity = enhanced_keyword_matching(user_query, api_question)
                         
-                        if similarity > similarity_threshold:
-                            print(f"Similar API match found (score: {similarity:.2f}): {item['question']}")
-                            answer = item['answer']
-                            print(f"API answer: {answer}")
-                            return JsonResponse({"answer": answer}, status=200)
+                        # Combined similarity score (giving more weight to keyword matching)
+                        combined_similarity = (sequence_similarity * 0.4) + (keyword_similarity * 0.6)
+                        
+                        print(f">>> Comparing:")
+                        print(f"    User: '{user_query}'")
+                        print(f"    API:  '{api_question}'")
+                        print(f"    Sequence: {sequence_similarity:.3f}, Keyword: {keyword_similarity:.3f}, Combined: {combined_similarity:.3f}")
+                        
+                        if combined_similarity > best_similarity:
+                            best_match = {"question": api_question, "answer": api_answer, "similarity": combined_similarity}
+                            best_similarity = combined_similarity
                 
-                print("No matching questions found in API")
+                # LOWERED threshold for better matching
+                similarity_threshold = 0.4  # Reduced from 0.65/0.8
+                
+                if best_match and best_similarity > similarity_threshold:
+                    print(f">>> BEST MATCH found (score: {best_similarity:.3f}): {best_match['question']}")
+                    print(f">>> Returning answer: {best_match['answer'][:100]}...")
+                    return JsonResponse({"answer": best_match["answer"]}, status=200)
+                else:
+                    print(f">>> No good match found. Best similarity: {best_similarity:.3f}")
+                
+            except requests.exceptions.Timeout:
+                print(">>> Questioners API timeout - continuing with normal processing")
+            except requests.exceptions.RequestException as e:
+                print(f">>> Error checking questioners API: {e} - continuing with normal processing")
             except Exception as e:
-                print(f"Error checking questioners API: {e}")
-                # Continue to normal processing if API check fails
-
-
-        if not user_query:
-            return JsonResponse({"message": "Please enter a query."})
-
-        # Headers already defined at the beginning of the function
-
-        # Call the university API with correct header
-        centers = []
-        programs = []
+                print(f">>> Unexpected error with questioners API: {e} - continuing with normal processing")
 
         # Fetch all regional centers once
         rc_name_mapping = {}
@@ -176,7 +221,6 @@ def process_query(request):
             if centers_response.status_code == 200:
                 centers_data = json.loads(centers_response.content)
                 print(f"Debug: centers_data in process_query: {centers_data}")
-                # The fetch_centers function now returns a JsonResponse with "formatted_centers" and "raw_centers" keys
                 formatted_centers_list = centers_data.get("formatted_centers", [])
                 raw_centers_list = centers_data.get("raw_centers", [])
                 print(f"Debug: formatted_centers_list extracted in process_query: {formatted_centers_list}")
@@ -194,42 +238,14 @@ def process_query(request):
         except Exception as e:
             print(f"Error fetching regional centers for mapping: {e}")
 
-        try:  # Added try block
-            normalized_query = user_query.lower()
-            center_keywords = [
-                "center",
-                "centre",
-                "regional center",
-                "study center",
-                "cneters",
-                "centres",
-                "cenrets",
-            ]
-            program_keywords = [
-                "program",
-                "course",
-                "study",
-                "list programs",
-                "show programs",
-                "progams",
-                "courses",
-            ]
-            lsc_keywords = [
-                "lsc",
-                "learning support center",
-                "study center",
-                "lscs",
-                "learning support centers",
-            ]
+        try:
             regional_center_query_match = re.search(
                 r"lsc(?:'s)? under regional center (\w+)", normalized_query
             )
 
             if regional_center_query_match:
                 regional_center_name = regional_center_query_match.group(1)
-                print(
-                    f">>> LSC query for specific regional center detected: {regional_center_name}"
-                )
+                print(f">>> LSC query for specific regional center detected: {regional_center_name}")
                 lsc_data = fetch_lsc_data(regional_center_name)
                 if lsc_data:
                     lsc_list_html = f"Here are the LSCs under {regional_center_name} Regional Center:\n<ol>"
@@ -238,21 +254,16 @@ def process_query(request):
                         if isinstance(rc_id, str) and rc_id.isdigit():
                             rc_id = int(rc_id)
                         elif not isinstance(rc_id, int):
-                            rc_id = None  # Set to None if not a valid ID
+                            rc_id = None
 
-                        # ✅ Use rc_name_mapping to get the rcname
                         rc_name = rc_name_mapping.get(rc_id, "N/A")
-
-                        lsc_list_html += f"<li><strong>{lsc['lscname']}</strong><br>Address: {lsc['lscaddress']}<br>Contact: {lsc['lscnumber']}<br>Coordinator: {lsc['coordinatorname']}<br>Email: <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br>RC: {rc_id}<br>RC Name: {rc_name}</li>"
+                        lsc_list_html += f"<li><strong>{lsc['lscname']}</strong><br><strong>Address:</strong> {lsc['lscaddress']}<br><strong>Contact:</strong> {lsc['lscnumber']}<br><strong>Coordinator:</strong> {lsc['coordinatorname']}<br><strong>Email:</strong> <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br><strong>RC:</strong> {rc_id}<br><strong>RC Name:</strong> {rc_name}</li>"
                     lsc_list_html += "</ol>"
                     return JsonResponse({"message": lsc_list_html})
                 else:
-                    return JsonResponse(
-                        {"message": "Sorry, I couldn't fetch LSC data at the moment."}
-                    )
+                    return JsonResponse({"message": "Sorry, I couldn't fetch LSC data at the moment."})
 
             elif any(keyword in normalized_query for keyword in center_keywords):
-                # If the query is about centers, display the formatted list
                 if formatted_centers_list:
                     formatted_centers_html = "Here are the Regional Centers:\n<ol>"
                     for center_html in formatted_centers_list:
@@ -261,6 +272,7 @@ def process_query(request):
                     return JsonResponse({"message": formatted_centers_html})
                 else:
                     return JsonResponse({"message": "Sorry, I couldn't fetch regional center data at the moment."})
+                    
             elif any(keyword in normalized_query for keyword in lsc_keywords):
                 print(">>> General LSC query detected, fetching all LSCs...")
                 lsc_data = fetch_lsc_data()
@@ -268,148 +280,31 @@ def process_query(request):
                     all_lscs_html = "Here are the Learning Support Centers:\n<ol>"
                     for lsc in lsc_data:
                         rc_id = lsc.get("lscrc")
-                        # Ensure rc_id is an integer for mapping lookup
                         if isinstance(rc_id, str) and rc_id.isdigit():
                             rc_id = int(rc_id)
                         elif not isinstance(rc_id, int):
-                            rc_id = None  # Set to None if not a valid ID
+                            rc_id = None
 
-                        rc_name = rc_name_mapping.get(rc_id, "N/A")  # Use the mapping
-                        print(
-                            f"DEBUG: LSC RC ID: {lsc.get('lscrc')}, Processed RC ID: {rc_id}, RC Name from mapping: {rc_name}"
-                        )
-                        all_lscs_html += f"<li><strong>{lsc['lscname']}</strong><br>Address: {lsc['lscaddress']}<br>Contact: {lsc['lscnumber']}<br>Coordinator: {lsc['coordinatorname']}<br>Email: <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br>RC: {rc_id}<br>RCNAME: {rc_name}</li>"
+                        rc_name = rc_name_mapping.get(rc_id, "N/A")
+                        print(f"DEBUG: LSC RC ID: {lsc.get('lscrc')}, Processed RC ID: {rc_id}, RC Name from mapping: {rc_name}")
+                        all_lscs_html += f"<li><strong>{lsc['lscname']}</strong><br><strong>Address:</strong> {lsc['lscaddress']}<br><strong>Contact:</strong> {lsc['lscnumber']}<br><strong>Coordinator:</strong> {lsc['coordinatorname']}<br><strong>Email:</strong> <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br><strong>RC:</strong> {rc_id}<br><strong>RC Name:</strong> {rc_name}</li>"
                     all_lscs_html += "</ol>"
                     return JsonResponse({"message": all_lscs_html})
                 else:
-                    return JsonResponse(
-                        {"message": "Sorry, I couldn't fetch LSC data at the moment."}
-                    )
-        except Exception as e:  # Corrected indentation
-            print(f"Error fetching regional centers for mapping: {e}")
+                    return JsonResponse({"message": "Sorry, I couldn't fetch LSC data at the moment."})
+        except Exception as e:
+            print(f"Error in LSC/Center processing: {e}")
 
-        # Normalize user query for keyword detection to handle typos
-        normalized_query = user_query.lower()
-
-        # Check for clarification needed for Honours programs
-
-        center_keywords = [
-            "center",
-            "centre",
-            "regional center",
-            "study center",
-            "cneters",
-            "centres",
-            "cenrets",
-        ]
-        program_keywords = [
-            "program",
-            "course",
-            "study",
-            "list programs",
-            "show programs",
-            "progams",
-            "courses",
-        ]
-
-        lsc_keywords = [
-            "lsc",
-            "learning support center",
-            "study center",
-            "lscs",
-            "learning support centers",
-        ]
-        category_keywords = ["category", "field", "discipline", "stream", "branch", "type", "area"]
-        regional_center_query_match = re.search(
-            r"lsc(?:'s)? under regional center (\w+)", normalized_query
-        )
-
-        if regional_center_query_match:
-            regional_center_name = regional_center_query_match.group(1)
-            print(
-                f">>> LSC query for specific regional center detected: {regional_center_name}"
-            )
-            lsc_data = fetch_lsc_data(regional_center_name)
-            if lsc_data:
-                lsc_list_html = f"Here are the LSCs under {regional_center_name} Regional Center:\n<ol>"
-                for lsc in lsc_data:
-                    rc_id = lsc.get("lscrc")
-                    # Ensure rc_id is an integer for mapping lookup
-                    if isinstance(rc_id, str) and rc_id.isdigit():
-                        rc_id = int(rc_id)
-                    elif not isinstance(rc_id, int):
-                        rc_id = None  # Set to None if not a valid ID
-
-                    rc_name = rc_name_mapping.get(rc_id, "N/A")  # Use the mapping
-                    print(
-                        f"DEBUG: LSC RC ID: {lsc.get('lscrc')}, Processed RC ID: {rc_id}, RC Name from mapping: {rc_name}"
-                    )
-                    lsc_list_html += f"<li><strong>{lsc['lscname']}</strong><br>Address: {lsc['lscaddress']}<br>Contact: {lsc['lscnumber']}<br>Coordinator: {lsc['coordinatorname']}<br>Email: <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br>RC: {rc_id}<br>RCNAME: {lscrc['rcname']}</li>"
-                lsc_list_html += "</ol>"
-                return JsonResponse({"message": lsc_list_html})
-            else:
-                return JsonResponse(
-                    {"message": "Sorry, I couldn't fetch LSC data at the moment."}
-                )
-        elif any(keyword in normalized_query for keyword in lsc_keywords):
-            print(">>> General LSC query detected, fetching all LSCs...")
-            lsc_data = fetch_lsc_data()
-            if lsc_data:
-                all_lscs_html = "Here are the Learning Support Centers:\n<ol>"
-                for lsc in lsc_data:
-                    rc_id = lsc.get("lscrc")
-                    # Ensure rc_id is an integer for mapping lookup
-                    if isinstance(rc_id, str) and rc_id.isdigit():
-                        rc_id = int(rc_id)
-                    elif not isinstance(rc_id, int):
-                        rc_id = None  # Set to None if not a valid ID
-
-                    rc_name = rc_name_mapping.get(rc_id, "N/A")  # Use the mapping
-                    print(
-                        f"DEBUG: LSC RC ID: {lsc.get('lscrc')}, Processed RC ID: {rc_id}, RC Name from mapping: {rc_name}"
-                    )
-                    all_lscs_html += f"<li><strong>{lsc['lscname']}</strong><br>Address: {lsc['lscaddress']}<br>Contact: {lsc['lscnumber']}<br>Coordinator: {lsc['coordinatorname']}<br>Email: <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br>RC: {rc_id}<br>RCNAME: {rc_name}</li>"
-                all_lscs_html += "</ol>"
-                return JsonResponse({"message": all_lscs_html})
-            else:
-                return JsonResponse(
-                    {"message": "Sorry, I couldn't fetch LSC data at the moment."}
-                )
-        elif any(keyword in normalized_query for keyword in center_keywords):
-            print(">>> Center query detected, fetching centers...")
-            centers_response = fetch_centers(request)
-            print(f">>> Centers response status: {centers_response.status_code}")
-
-            if centers_response.status_code == 200:
-                centers_data = json.loads(centers_response.content)
-                print(f">>> Centers response data: {centers_data}")
-                centers = centers_data.get("centers", [])
-                print(f">>> Extracted centers: {centers}")
-
-                # For center queries, return the formatted centers directly
-                if centers:
-                    centers_html = (
-                        "Here are our regional centers:\n<ol>"
-                        + "".join([f"<li>{center}</li>" for center in centers])
-                        + "</ol>"
-                    )
-                    return JsonResponse({"message": centers_html})
-                else:
-                    return JsonResponse({"message": "No centers found."})
-            else:
-                print(f">>> Centers fetch failed: {centers_response.content}")
-                return centers_response  # Return error response from fetch_centers
-                
-        elif is_program_query and is_category_query:
+        # Program and category handling
+        if is_program_query and is_category_query:
             print(">>> Detected query for programs within a category")
             print(f"DEBUG: Original query: '{normalized_query}'")
             print(f"DEBUG: is_program_query: {is_program_query}")
             print(f"DEBUG: is_category_query: {is_category_query}")
             
-            # Fixed: Sort by length (longest first) to prevent "ug" matching inside "fyug"
             category_alias_map = {
                 "fyug": "FYUG",
-                "fyugp": "FYUG",  # alias for user convenience
+                "fyugp": "FYUG",
                 "four year": "FYUG",
                 "honour": "FYUG",
                 "honours": "FYUG",
@@ -418,7 +313,6 @@ def process_query(request):
                 "short term program": "STP",
                 "short term programs": "STP",
                 "short term programmes": "STP",
-                "short term programmes": "STP",
                 "stp": "STP",
                 "ugp": "UG",
                 "ug": "UG",
@@ -426,13 +320,10 @@ def process_query(request):
                 "post graduate": "PG",
                 "postgrad": "PG",
                 "postgraduates": "PG",
-                "postgraduates": "PG",
-                "ug": "UG",
-                "under graduates": "UG"  # Put UG last so it doesn't match inside "fyug"
+                "under graduates": "UG"
             }
 
             matched_category = None
-            # Sort by length (longest first) to avoid partial matches
             for key in sorted(category_alias_map.keys(), key=len, reverse=True):
                 if key in normalized_query:
                     matched_category = category_alias_map[key]
@@ -448,12 +339,11 @@ def process_query(request):
 
             all_programs = university_response.json().get("programme", [])
 
-            # DEBUG: print all unique categories FIRST
             categories_found = set()
             category_counts = {}
             for p in all_programs:
                 cat = p.get('pgm_category', '').strip()
-                if cat:  # Only add non-empty categories
+                if cat:
                     categories_found.add(cat)
                     category_counts[cat] = category_counts.get(cat, 0) + 1
 
@@ -461,7 +351,6 @@ def process_query(request):
             print(f"DEBUG: Category counts: {category_counts}")
             print(f"DEBUG: Looking for matched category: '{matched_category}'")
             
-            # Special debugging for STP
             if matched_category == "STP":
                 print("DEBUG: Special STP debugging:")
                 stp_like_categories = []
@@ -470,7 +359,6 @@ def process_query(request):
                         stp_like_categories.append(cat)
                 print(f"DEBUG: STP-like categories found: {stp_like_categories}")
                 
-                # Check if there are any programs that might be STP
                 potential_stp_programs = []
                 for p in all_programs:
                     pgm_name = p.get('pgm_name', '').lower()
@@ -481,9 +369,9 @@ def process_query(request):
                 if potential_stp_programs:
                     for i, prog in enumerate(potential_stp_programs[:3]):
                         print(f"DEBUG: STP candidate {i+1}: {prog.get('pgm_name')} — Category: '{prog.get('pgm_category')}'")
+
             print(f"DEBUG: About to start filtering...")
 
-            # Fixed: Try multiple matching approaches
             filtered_programs = []
             
             # Method 1: Exact case match
@@ -511,7 +399,6 @@ def process_query(request):
             print(f"DEBUG: Matched Category: {matched_category}")
             print(f"DEBUG: Total filtered programs: {len(filtered_programs)}")
             
-            # Show first few programs for debugging
             for i, prog in enumerate(filtered_programs[:5]):
                 print(f"DEBUG: {i+1}. {prog.get('pgm_name')} — Category: '{prog.get('pgm_category')}'")
 
@@ -528,33 +415,21 @@ def process_query(request):
                     "message": f"No programs found under '{matched_category}' category. Available categories are: {available_categories}"
                 })
 
-
-
-
         elif any(keyword in normalized_query for keyword in program_keywords):
-            university_response = requests.get(
-                UNIVERSITY_API_URL, headers=university_headers, timeout=10
-            )
+            university_response = requests.get(UNIVERSITY_API_URL, headers=university_headers, timeout=10)
 
             print(f">>> University API status: {university_response.status_code}")
-            print(
-                f">>> University API response (preview): {university_response.text[:200]}"
-            )
+            print(f">>> University API response (preview): {university_response.text[:200]}")
 
             if university_response.status_code != 200:
-                return JsonResponse(
-                    {"message": "Sorry, unable to fetch university data now."}
-                )
+                return JsonResponse({"message": "Sorry, unable to fetch university data now."})
 
             uni_data = university_response.json()
             programs = uni_data.get("programme", [])
-            print(f"DEBUG: Programs data from API: {programs[:2]}") # Print first 2 programs for brevity
+            print(f"DEBUG: Programs data from API: {programs[:2]}")
             if not isinstance(programs, list):
-                return JsonResponse(
-                    {"message": "Invalid data format received from university API."}
-                )
+                return JsonResponse({"message": "Invalid data format received from university API."})
 
-            # Store programs in session for later retrieval
             request.session['programs'] = programs
 
             program_list_html = "Here are the programs offered:\n<ol>"
@@ -564,20 +439,16 @@ def process_query(request):
             program_list_html += "<p>If you would like to know about a specific program, type the corresponding number.</p>"
 
             return JsonResponse({"message": program_list_html})
-        # Handle specific program queries
 
         # Handle general specific program queries
-        elif len(normalized_query) > 3: # Avoid very short queries for specific programs
+        elif len(normalized_query) > 3:
             print(f">>> Specific program query detected: {normalized_query}")
             
             try:
-                # Fetch university data first
                 university_response = requests.get(UNIVERSITY_API_URL, headers=university_headers, timeout=15)
                 
                 if university_response.status_code != 200:
-                    return JsonResponse(
-                        {"message": "Sorry, unable to fetch university data now."}
-                    )
+                    return JsonResponse({"message": "Sorry, unable to fetch university data now."})
 
                 uni_data = university_response.json()
                 all_programs = uni_data.get("programme", [])
@@ -587,25 +458,20 @@ def process_query(request):
             except Exception as e:
                 print(f">>> ERROR in process_query: {str(e)}")
                 return JsonResponse({"message": "There was an error processing your request."})
-                
 
             matching_programs = []
-            # Set a similarity threshold for fuzzy matching
             similarity_threshold = 0.6
 
             for program in all_programs:
                 pgm_name = program.get('pgm_name', '').lower()
-                # Calculate similarity ratio
                 similarity = SequenceMatcher(None, normalized_query, pgm_name).ratio()
                 
                 if similarity >= similarity_threshold:
                     matching_programs.append((program, similarity))
             
-            # Sort by similarity in descending order to prioritize best matches
             matching_programs.sort(key=lambda x: x[1], reverse=True)
-            matching_programs = [p[0] for p in matching_programs] # Extract only the program dicts
+            matching_programs = [p[0] for p in matching_programs]
 
-            # Attempt to extract a program type from the query (e.g., 'BA', 'MA')
             query_program_type = None
             for p_type in ['ba', 'ma', 'b.sc', 'm.sc', 'b.com', 'm.com', 'phd']:
                 if normalized_query.startswith(p_type):
@@ -622,7 +488,7 @@ def process_query(request):
             programs_to_display = filtered_by_type_programs if filtered_by_type_programs else matching_programs
 
             if len(programs_to_display) > 1:
-                request.session['programs'] = programs_to_display # Store all matching programs
+                request.session['programs'] = programs_to_display
                 program_list_html = "Multiple programs found. Please specify by number:\n<ol>"
                 for i, program in enumerate(programs_to_display):
                     program_list_html += f"<li>{program.get('pgm_name', 'N/A')} ({program.get('pgm_category', 'N/A')})</li>"
@@ -638,12 +504,11 @@ def process_query(request):
                 program_details_html += f"<p><strong>Description:</strong> {found_program.get('pgm_desc', 'N/A')}</p>"
                 program_details_html += f"<p><strong>Category:</strong> {found_program.get('pgm_category', 'N/A')}</p>"
                 program_details_html += f"<p><strong>year:</strong> {found_program.get('pgm_year', 'N/A')}</p>"
-                # Add more fields as needed based on your API response structure
                 return JsonResponse({"message": program_details_html})
+                
         elif user_query.isdigit():
             stored_programs = request.session.get('programs')
 
-            # Only process as a program number if programs are actually stored in the session
             if stored_programs and len(stored_programs) > 0:
                 program_index = int(user_query) - 1
                 if 0 <= program_index < len(stored_programs):
@@ -656,48 +521,45 @@ def process_query(request):
                     program_details_html += f"<p><strong>year:</strong> {program.get('pgm_year', 'N/A')}</p>"
                     return JsonResponse({"message": program_details_html})
                 else:
-                    # If index is out of range, clear programs from session and return an error message
                     if 'programs' in request.session:
                         del request.session['programs']
                     return JsonResponse({"message": "The number you entered does not correspond to an available program. Please list programs first or enter a valid program number."})
             else:
-                # If no programs are stored in session, clear any stale 'programs' key and return an error message
                 if 'programs' in request.session:
                     del request.session['programs']
                 return JsonResponse({"message": "Please list programs first before entering a number."})
-        # This 'else' block handles all non-digit queries
         else:
-            # If no specific keyword is detected, proceed with general query processing
-            university_response = requests.get(
-                UNIVERSITY_API_URL, headers=university_headers, timeout=10
-            )
+            # Default processing with Groq API
+            centers = []
+            programs = []
+            
+            university_response = requests.get(UNIVERSITY_API_URL, headers=university_headers, timeout=10)
 
             print(f">>> University API status: {university_response.status_code}")
-            print(
-                f">>> University API response (preview): {university_response.text[:200]}"
-            )
+            print(f">>> University API response (preview): {university_response.text[:200]}")
 
             if university_response.status_code != 200:
-                return JsonResponse(
-                    {"message": "Sorry, unable to fetch university data now."}
-                )
+                return JsonResponse({"message": "Sorry, unable to fetch university data now."})
 
             uni_data = university_response.json()
             programs = uni_data.get("programme", [])
-            print(f"DEBUG: Programs data from API: {programs[:2]}") # Print first 2 programs for brevity
+            print(f"DEBUG: Programs data from API: {programs[:2]}")
             if not isinstance(programs, list):
-                return JsonResponse(
-                    {"message": "Invalid data format received from university API."}
-                )
+                return JsonResponse({"message": "Invalid data format received from university API."})
 
             prompt = build_prompt(user_query, programs, centers)
             answer = call_groq_api(prompt, programs, centers)
 
             return JsonResponse({"message": answer})
 
+    except json.JSONDecodeError:
+        print(">>> ERROR: Invalid JSON in request body")
+        return JsonResponse({"message": "Invalid request format."})
     except Exception as e:
-        print(">>> ERROR in process_query:", e)
-        return JsonResponse({"message": "There was an error processing your request."})
+        print(f">>> ERROR in process_query: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"message": "There was an error processing your request. Please try again later."})
 
 
 def fetch_lsc_data(regional_center_name=None):
@@ -1059,7 +921,7 @@ def fetch_centers(request):
             # Only include centers with a known name
             if name != 'Unknown Center' and name != 'N/A':
                 # Format each center with HTML formatting for better display
-                center_html = f"<strong>{name}</strong><br>Address: {address}<br>RC Director: {headname}<br>Number: {headnumber}<br>Email: <a href='mailto:{headmail}' style='color: #0066cc;'>{headmail}</a>"
+                center_html = f"<strong>{name}</strong><br><strong>Address:</strong> {address}<br><strong>RC Director:</strong> {headname}<br><strong>Number:</strong> {headnumber}<br><strong>Email:</strong> <a href='mailto:{headmail}' style='color: #0066cc;'>{headmail}</a>"
                 formatted_centers.append(center_html)
                 print(f">>> Formatted center {idx + 1}: {center_html[:100]}...")
 
