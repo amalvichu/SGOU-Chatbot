@@ -618,7 +618,7 @@ def handle_specific_program_field_query(user_query, all_programs):
     e.g., "category of MA History", "duration of BA English", etc.
     """
     normalized_query = user_query.lower()
-    
+
     # Define field keywords and their corresponding API fields
     field_mapping = {
         'category': 'pgm_category',
@@ -627,9 +627,11 @@ def handle_specific_program_field_query(user_query, all_programs):
         'duration': 'pgm_year',
         'description': 'pgm_desc',
         'desc': 'pgm_desc',
-        'details': 'pgm_desc'
+        'details': 'pgm_desc',
+        'fee structure': 'pgm_fee',
+        'fees': 'pgm_fee',
     }
-    
+
     # Check if query contains field keywords
     detected_field = None
     api_field = None
@@ -690,6 +692,19 @@ def handle_specific_program_field_query(user_query, all_programs):
         return f"<strong>Description of {program_name}:</strong><br><br>{field_value}"
     else:
         return f"<strong>{detected_field.title()} of {program_name}:</strong> {field_value}"
+
+
+def handle_fee_structure_query(program_data):
+    """
+    Handles queries specifically asking for fee structure.
+    """
+    pgm_name = program_data.get('pgm_name')
+    pgm_fee = program_data.get('pgm_fee')
+
+    if pgm_fee:
+        return f"The fee structure for {pgm_name} is: {pgm_fee}"
+    else:
+        return f"Sorry, I couldn't find the fee structure for {pgm_name}."
 
 
 def build_prompt(user_query, programs, centers=None):
