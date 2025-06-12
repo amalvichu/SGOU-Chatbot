@@ -1145,3 +1145,30 @@ button {
 .message.bot li {
     margin-bottom: 6px;
 }
+
+
+/* for dropdown styling */
+
+.rc-item {
+    border: 1px solid #3dc4ec;
+    border-radius: 8px;
+    margin: 10px 0;
+    padding: 10px;
+    transition: all 0.3s ease;
+  }
+  
+  .rc-header {
+    display: flex;
+    justify-content: space-between;
+    cursor: pointer;
+    font-weight: bold;
+    color: #0066cc;
+  }
+  .rc-item:hover {
+    background-color: #4298b3;
+  }
+  .rc-arrow {
+    font-size: 1.2em;
+  }
+
+  /* end */

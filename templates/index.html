@@ -216,6 +216,35 @@
             return cookieValue;
         }
     </script>
+    <script>
+      function toggleDropdown(clickedHeader) {
+        // Close all other open dropdowns
+        document.querySelectorAll('.rc-details').forEach((el) => {
+          if (el !== clickedHeader.nextElementSibling) {
+            el.style.display = 'none';
+          }
+        });
+      
+        document.querySelectorAll('.rc-arrow').forEach((arrow) => {
+          if (arrow !== clickedHeader.querySelector('.rc-arrow')) {
+            arrow.innerHTML = '&#9660;';
+          }
+        });
+      
+        // Toggle the clicked one
+        const content = clickedHeader.nextElementSibling;
+        const arrow = clickedHeader.querySelector('.rc-arrow');
+      
+        if (content.style.display === 'none') {
+          content.style.display = 'block';
+          arrow.innerHTML = '&#9650;'; // Up arrow
+        } else {
+          content.style.display = 'none';
+          arrow.innerHTML = '&#9660;'; // Down arrow
+        }
+      }
+      </script>
+      
 </body>
 
 </html>

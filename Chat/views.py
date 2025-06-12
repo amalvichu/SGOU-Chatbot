@@ -383,7 +383,7 @@ def process_query(request):
                 print(">>> General LSC query detected, fetching all LSCs...")
                 lsc_data = fetch_lsc_data()
                 if lsc_data:
-                    all_lscs_html = "Here are the Learning Support Centers:\n<ol>"
+                    all_lscs_html = "Here are the Learning Support Centers:<br><br>"
                     for lsc in lsc_data:
                         rc_id = lsc.get("lscrc")
                         if isinstance(rc_id, str) and rc_id.isdigit():
@@ -392,12 +392,34 @@ def process_query(request):
                             rc_id = None
 
                         rc_name = rc_name_mapping.get(rc_id, "N/A")
-                        print(f"DEBUG: LSC RC ID: {lsc.get('lscrc')}, Processed RC ID: {rc_id}, RC Name from mapping: {rc_name}")
-                        all_lscs_html += f"<li><strong>{lsc['lscname']}</strong><br><strong>Address:</strong> {lsc['lscaddress']}<br><strong>Contact:</strong> {lsc['lscnumber']}<br><strong>Coordinator:</strong> {lsc['coordinatorname']}<br><strong>Email:</strong> <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br><strong>RC:</strong> {rc_id}<br><strong>RC Name:</strong> {rc_name}</li>"
-                    all_lscs_html += "</ol>"
+
+                        # 🧠 Safe encoding to prevent HTML errors
+                        lsc_name = lsc.get("lscname", "N/A").replace("'", "&apos;")
+                        lsc_address = lsc.get("lscaddress", "N/A").replace("'", "&apos;")
+                        lsc_number = lsc.get("lscnumber", "N/A")
+                        lsc_coordinator = lsc.get("coordinatorname", "N/A").replace("'", "&apos;")
+                        lsc_email = lsc.get("coordinatormail", "N/A")
+
+                        all_lscs_html += f'''
+            <div class="lsc-item" style="border:1px solid #ccc; border-radius:8px; margin:10px 0; padding:10px;">
+            <div class="lsc-header" onclick="toggleDropdown(this)" style="cursor:pointer; display:flex; justify-content:space-between; font-weight:bold; color:#0066cc;">
+                <span>{lsc_name}</span>
+                <span class="lsc-arrow">&#9660;</span>
+            </div>
+            <div class="lsc-details" style="display:none; margin-top:8px;">
+                <strong>Address:</strong> {lsc_address}<br>
+                <strong>Contact:</strong> {lsc_number}<br>
+                <strong>Coordinator:</strong> {lsc_coordinator}<br>
+                <strong>Email:</strong> <a href="mailto:{lsc_email}" style="color:#0066cc;">{lsc_email}</a><br>
+                <strong>RC ID:</strong> {rc_id}<br>
+                <strong>RC Name:</strong> {rc_name}
+            </div>
+            </div>
+            '''
                     return JsonResponse({"message": all_lscs_html})
                 else:
                     return JsonResponse({"message": "Sorry, I couldn't fetch LSC data at the moment."})
+
         except Exception as e:
             print(f"Error in LSC/Center processing: {e}")
 
@@ -1057,7 +1079,21 @@ def fetch_centers(request):
             # Only include centers with a known name
             if name != 'Unknown Center' and name != 'N/A':
                 # Format each center with HTML formatting for better display
-                center_html = f"<strong>{name}</strong><br><strong>Address:</strong> {address}<br><strong>RC Director:</strong> {headname}<br><strong>Number:</strong> {headnumber}<br><strong>Email:</strong> <a href='mailto:{headmail}' style='color: #0066cc;'>{headmail}</a>"
+                center_html = f"""
+<div class="rc-item">
+  <div class="rc-header" onclick="toggleDropdown(this)">
+    <span class="rc-title">{name}</span>
+    <span class="rc-arrow">&#9660;</span>
+  </div>
+  <div class="rc-details" style="display: none; margin-top: 5px;">
+    <strong>Address:</strong> {address}<br>
+    <strong>RC Director:</strong> {headname}<br>
+    <strong>Number:</strong> {headnumber}<br>
+    <strong>Email:</strong> <a href='mailto:{headmail}' style='color: #0066cc;'>{headmail}</a>
+  </div>
+</div>
+"""
+
                 formatted_centers.append(center_html)
                 print(f">>> Formatted center {idx + 1}: {center_html[:100]}...")
 
