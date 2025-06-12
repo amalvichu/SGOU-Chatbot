@@ -1,2 +1,5 @@
 # Ignore the .env file (secrets)
 .env
+
+__pycache__/
+*.pyc

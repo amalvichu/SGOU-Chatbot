@@ -17,6 +17,7 @@ UNIVERSITY_API_URL = os.getenv("UNIVERSITY_API_URL")
 UNIVERSITY_API_KEY = os.getenv("UNIVERSITY_API_KEY")
 CENTERS_API_URL = os.getenv("CENTERS_API_URL")
 LSC_API_URL = os.getenv("LSC_API_URL")
+QNA_API_URL = os.getenv("QNA_API_URL")
 GROQ_API_URL = os.getenv("GROQ_API_URL")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 SGOU_OFFICIAL_WEBSITE = "https://sgou.ac.in"
@@ -88,7 +89,7 @@ def process_query(request):
         ]
         program_keywords = [
             "program", "course", "study", "list programs", "show programs", 
-            "progams", "courses",
+            "progams", "courses", "program name",
         ]
         lsc_keywords = [
             "lsc", "learning support center", "study center", 
@@ -105,6 +106,9 @@ def process_query(request):
         is_category_query = any(keyword in normalized_query for keyword in category_keywords)
         is_center_query = any(keyword in normalized_query for keyword in center_keywords)
         is_lsc_query = any(keyword in normalized_query for keyword in lsc_keywords) or re.search(r"lsc(?:'s)? under regional center (\w+)", normalized_query)
+
+        fee_keywords = ["fee structure", "fees", "admission fee", "tuition fee", "cost of program"]
+        is_fee_query = any(keyword in normalized_query for keyword in fee_keywords)
         
         # Check field queries
         field_keywords = ['category', 'year', 'years', 'duration', 'description', 'desc', 'details']
@@ -147,7 +151,105 @@ def process_query(request):
             except Exception as e:
                 print(f">>> Error in field query handling: {str(e)}")
                 return JsonResponse({"message": "Sorry, there was an unexpected error processing your request. Please try again later."})
-        
+
+        # Combined fee structure handling
+        if is_fee_query or request.session.get('waiting_for_fee_program'):
+            program_name_to_query = None
+
+            # Case 1: User is responding to a previous prompt for program name
+            if request.session.get('waiting_for_fee_program'):
+                program_name_to_query = user_query.strip()
+                del request.session['waiting_for_fee_program'] # Clear the flag
+                print(f">>> Handling fee query response for program: {program_name_to_query}")
+            # Case 2: Initial fee query, try to extract program name from current query
+            elif is_fee_query:
+                match = re.search(r"(?:fee structure|fees|cost)\s+(?:for|of)\s+([\w\s]+)", normalized_query)
+                if match:
+                    program_name_to_query = match.group(1).strip()
+                print(f">>> Handling initial fee query. Extracted program: {program_name_to_query}")
+
+            if program_name_to_query:
+                query_for_api = f"fee structure for {program_name_to_query}"
+                print(f">>> Querying questioners API for fee structure: {query_for_api}")
+                try:
+                    api_url = QNA_API_URL
+                    headers = {"X-API-KEY": UNIVERSITY_API_KEY}
+                    response = requests.get(api_url, headers=headers, params={'query': query_for_api}, timeout=10)
+                    response.raise_for_status()
+                    questions_data = response.json()
+                    
+                    best_match = None
+                    best_similarity = 0
+                    questions_list = questions_data.get('question', [])
+
+                    for item in questions_list:
+                        if "question" in item and "answer" in item:
+                            api_question = item["question"]
+                            api_answer = item["answer"]
+                            
+                            combined_similarity = (SequenceMatcher(None, query_for_api.lower(), api_question.lower()).ratio() * 0.4) + \
+                                                  (enhanced_keyword_matching(query_for_api, api_question) * 0.6)
+                            
+                            if combined_similarity > best_similarity:
+                                best_match = {"question": api_question, "answer": api_answer, "similarity": combined_similarity}
+                                best_similarity = combined_similarity
+                    
+                    if best_match and best_similarity > 0.7: # Use a similar threshold as general QNA
+                        return JsonResponse({"message": best_match["answer"]}, status=200)
+                    else:
+                        return JsonResponse({"message": f"Sorry, I couldn't find the fee structure for '{program_name_to_query}'. Please try rephrasing or check the program name."})
+
+                except requests.exceptions.RequestException as e:
+                    print(f">>> Error fetching fee structure from questioners API: {e}")
+                    return JsonResponse({"message": "Sorry, I'm having trouble fetching fee information right now. Please try again later."})
+            else:
+                # If no program name was found and it was an initial fee query, prompt for program name
+                request.session['waiting_for_fee_program'] = True
+                return JsonResponse({"message": "Which program's fee structure do you want to know? Please tell me the program name."})
+            return JsonResponse({}) # Ensure a response is always returned from this block
+
+        # IMPROVED: Check questioners API for ALL non-specific queries (not just non-program/category/center/LSC)"(?:fee structure|fees|cost)\s+(?:for|of)\s+([\w\s]+)", normalized_query)
+            if match:
+                program_name_match = match.group(1).strip()
+            
+            if program_name_match:
+                query_for_api = f"fee structure for {program_name_match}"
+                print(f">>> Querying questioners API for fee structure: {query_for_api}")
+                try:
+                    api_url = QNA_API_URL
+                    headers = {"X-API-KEY": UNIVERSITY_API_KEY}
+                    response = requests.get(api_url, headers=headers, params={'query': query_for_api}, timeout=10)
+                    response.raise_for_status()
+                    questions_data = response.json()
+                    
+                    best_match = None
+                    best_similarity = 0
+                    questions_list = questions_data.get('question', [])
+
+                    for item in questions_list:
+                        if "question" in item and "answer" in item:
+                            api_question = item["question"]
+                            api_answer = item["answer"]
+                            
+                            combined_similarity = (SequenceMatcher(None, query_for_api.lower(), api_question.lower()).ratio() * 0.4) + \
+                                                  (enhanced_keyword_matching(query_for_api, api_question) * 0.6)
+                            
+                            if combined_similarity > best_similarity:
+                                best_match = {"question": api_question, "answer": api_answer, "similarity": combined_similarity}
+                                best_similarity = combined_similarity
+                    
+                    if best_match and best_similarity > 0.7: # Use a similar threshold as general QNA
+                        return JsonResponse({"message": best_match["answer"]}, status=200)
+                    else:
+                        return JsonResponse({"message": f"Sorry, I couldn't find the fee structure for '{program_name_match}'. Please try rephrasing or check the program name."})
+
+                except requests.exceptions.RequestException as e:
+                    print(f">>> Error fetching fee structure from questioners API: {e}")
+                    return JsonResponse({"message": "Sorry, I'm having trouble fetching fee information right now. Please try again later."})
+            else:
+                request.session['waiting_for_fee_program'] = True
+                return JsonResponse({"message": "Which program's fee structure do you want to know? Please tell me the program name."})
+
         # IMPROVED: Check questioners API for ALL non-specific queries (not just non-program/category/center/LSC)
         # Only skip API check for very specific structural queries like "list all programs" or "show all centers"
         skip_api_check = (
@@ -158,9 +260,13 @@ def process_query(request):
         
         if not skip_api_check:
             try:
-                api_url = "https://sgou.ac.in/api/questioners"
+                api_url = QNA_API_URL
                 print(f">>> Checking questioners API for query: {user_query}")
-                response = requests.get(api_url, timeout=10)
+                # Add Authorization header with API key
+                headers = {
+                    "X-API-KEY": UNIVERSITY_API_KEY  # Replace with your actual API key
+                }
+                response = requests.get(api_url, headers=headers, timeout=10)
                 response.raise_for_status()
                 questions_data = response.json()
                 print(f">>> Questions data structure: {type(questions_data)}")
@@ -198,7 +304,7 @@ def process_query(request):
                             best_similarity = combined_similarity
                 
                 # LOWERED threshold for better matching
-                similarity_threshold = 0.4  # Reduced from 0.65/0.8
+                similarity_threshold = 0.7  # Increased for stricter matching
                 
                 if best_match and best_similarity > similarity_threshold:
                     print(f">>> BEST MATCH found (score: {best_similarity:.3f}): {best_match['question']}")
@@ -294,6 +400,18 @@ def process_query(request):
                     return JsonResponse({"message": "Sorry, I couldn't fetch LSC data at the moment."})
         except Exception as e:
             print(f"Error in LSC/Center processing: {e}")
+
+        # Handle queries asking for the number of programs
+        if any(word in normalized_query for word in ["how many programs", "number of programs", "total programs", "programs count"]):
+            try:
+                university_response = requests.get(UNIVERSITY_API_URL, headers=university_headers, timeout=10)
+                university_response.raise_for_status()
+                all_programs = university_response.json().get("programme", [])
+                num_programs = len(all_programs)
+                return JsonResponse({"message": f"We have {num_programs} programs available."})
+            except requests.exceptions.RequestException as e:
+                print(f">>> Error fetching program count: {e}")
+                return JsonResponse({"message": "Sorry, I couldn't fetch the number of programs at the moment. Please try again later."})
 
         # Program and category handling
         if is_program_query and is_category_query:
@@ -560,6 +678,9 @@ def process_query(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({"message": "There was an error processing your request. Please try again later."})
+    
+    # Default return if no other condition is met
+    return JsonResponse({"message": "I'm sorry, I couldn't understand your request. Please try rephrasing it."})
 
 
 def fetch_lsc_data(regional_center_name=None):
