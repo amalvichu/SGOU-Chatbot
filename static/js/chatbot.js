@@ -295,6 +295,7 @@ document.addEventListener('DOMContentLoaded', function () {
             clonedBouncingBallAnimation.style.display = 'flex';
         }
 
+
         const startTime = Date.now(); // Record start time
 
         fetch('/process_query', {
@@ -332,6 +333,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }, timeToWait);
         })
+        
         .catch(error => {
             console.error('Error:', error);
             const elapsedTime = Date.now() - startTime;
@@ -346,6 +348,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }, timeToWait);
         });
     }
+    window.sendMessage = sendMessage;
 
     // Helper function to check if the message is requesting a program list
     function isProgramListRequest(message) {

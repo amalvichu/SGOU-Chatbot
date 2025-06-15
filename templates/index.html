@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <script src="{% static 'js/chatbot.js' %}"></script>
+    <script src="{% static 'js/mic-functionality.js' %}"></script>
     <script src="{% static 'js/sidebar-toggle.js' %}"></script>
 </head>
 
@@ -58,7 +59,7 @@
                     <div class="suggestion" data-query="centers">Centers</div>
                 </div>
                 <div class="input-area">
-                    <input type="text" class="message-input" placeholder="Type your message here...">
+                    <input type="text" class="message-input" id="message-input" placeholder="Type your message here...">
                     <button class="send">
                         SEND
                         <div class="star-1">
@@ -125,8 +126,7 @@
                             version="1.1"
                             style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
                             viewBox="0 0 784.11 815.53"
-                            xmlns:xlink="http://www.w3.org/1999/xlink"
-                          >
+                            xmlns:xlink="http://www.w3.org/1999/xlink">
                             <defs></defs>
                             <g id="Layer_x0020_1">
                               <metadata id="CorelCorpID_0Corel-Layer"></metadata>
@@ -176,7 +176,9 @@
                           </svg>
                         </div>
                       </button>
-                      
+                      <button type="button" class="mic-button" id="mic-button">
+                        <span class="material-icons" id="mic-icon">mic</span>
+                      </button>
                 </div>
             </div>
         </div>

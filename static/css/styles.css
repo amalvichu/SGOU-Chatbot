@@ -1146,6 +1146,41 @@ button {
     margin-bottom: 6px;
 }
 
+/* Mic button pulsing glow when active */
+.mic-listening {
+    animation: pulseGlow 1.5s infinite;
+    color: #e91e63; /* pinkish glow */
+    filter: drop-shadow(0 0 8px #e91e63);
+  }
+  
+  @keyframes pulseGlow {
+    0%, 100% {
+      filter: drop-shadow(0 0 8px #e91e63);
+      transform: scale(1);
+    }
+    50% {
+      filter: drop-shadow(0 0 15px #e91e63);
+      transform: scale(1.1);
+    }
+  }
+  
+  /* Optional: shake/bounce mic icon on start */
+  .mic-bounce {
+    animation: bounceMic 0.5s ease forwards;
+  }
+  
+  @keyframes bounceMic {
+    0% {
+         transform: translateY(0); 
+        }
+    50% {
+         transform: translateY(-6px); 
+        }
+    100% {
+         transform: translateY(0);
+        }
+  }
+
 
 /* for dropdown styling */
 
