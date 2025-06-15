@@ -1171,4 +1171,14 @@ button {
     font-size: 1.2em;
   }
 
+  .lsc-item {
+    border-radius:8px;
+    margin:10px 0; 
+    padding:10px; 
+    border: 1px solid #3dc4ec;
+  }
+
+  .lsc-item:hover {
+    background-color: #4298b3;
+  }
   /* end */

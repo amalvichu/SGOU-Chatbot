@@ -46,7 +46,7 @@ def enhanced_keyword_matching(user_query, api_question):
     question_patterns = [
         "what is", "what are", "how to", "when is", "when are", "where is", "where are",
         "full form", "meaning of", "definition of", "eligibility", "admission", "fee",
-        "duration", "course", "program", "certificate", "degree"
+        "duration", "course", "program", "certificate", "degree", "how long"
     ]
     
     pattern_matches = 0
@@ -105,13 +105,13 @@ def process_query(request):
         is_program_query = any(keyword in normalized_query for keyword in program_keywords)
         is_category_query = any(keyword in normalized_query for keyword in category_keywords)
         is_center_query = any(keyword in normalized_query for keyword in center_keywords)
-        is_lsc_query = any(keyword in normalized_query for keyword in lsc_keywords) or re.search(r"lsc(?:'s)? under regional center (\w+)", normalized_query)
+        is_lsc_query = any(keyword in normalized_query for keyword in lsc_keywords) or re.search(r"lsc(?:'s)? under regional center ([\w\s]+)", normalized_query)
 
         fee_keywords = ["fee structure", "fees", "admission fee", "tuition fee", "cost of program"]
         is_fee_query = any(keyword in normalized_query for keyword in fee_keywords)
         
         # Check field queries
-        field_keywords = ['category', 'year', 'years', 'duration', 'description', 'desc', 'details']
+        field_keywords = ['category', 'year', 'years', 'duration', 'description', 'desc', 'details','long']
         is_field_query = any(keyword in normalized_query for keyword in field_keywords) and ('of' in normalized_query or 'for' in normalized_query)
 
         # If this is a field query for a program, handle it first
@@ -340,21 +340,37 @@ def process_query(request):
                         or center.get("center_name")
                     )
                     if rc_id and rc_name:
+                        # Normalize rc_name to handle special characters like '–', '\xa0', and Unicode replacement character
+                        rc_name = rc_name.replace('–', '-').replace('\xa0', ' ').replace('\ufffd', '-').strip()
                         rc_name_mapping[rc_id] = rc_name
         except Exception as e:
             print(f"Error fetching regional centers for mapping: {e}")
 
         try:
             regional_center_query_match = re.search(
-                r"lsc(?:'s)? under regional center (\w+)", normalized_query
+                r"lsc(?:'s)? under (.*)", normalized_query, re.IGNORECASE
             )
 
             if regional_center_query_match:
-                regional_center_name = regional_center_query_match.group(1)
-                print(f">>> LSC query for specific regional center detected: {regional_center_name}")
-                lsc_data = fetch_lsc_data(regional_center_name)
+                regional_center_name_raw = regional_center_query_match.group(1).strip()
+                
+                # Extract the actual regional center name from the raw query
+                if regional_center_name_raw.lower().startswith("regional centre – "):
+                    regional_center_name = regional_center_name_raw[len("regional centre – "):].strip()
+                elif regional_center_name_raw.lower().startswith("regional center "):
+                    regional_center_name = regional_center_name_raw[len("regional center "):].strip()
+                else:
+                    regional_center_name = regional_center_name_raw
+
+                # Normalize regional_center_name to handle special characters like '–' and '\xa0'
+                regional_center_name = regional_center_name.replace('–', '-').replace('\xa0', ' ').strip()
+
+                print(f"Debug: Extracted and normalized regional_center_name: '{regional_center_name}'")
+                print(f"Debug: rc_name_mapping content: {rc_name_mapping}")
+
+                lsc_data = fetch_lsc_data(regional_center_name, rc_name_mapping)
                 if lsc_data:
-                    lsc_list_html = f"Here are the LSCs under {regional_center_name} Regional Center:\n<ol>"
+                    lsc_dropdown_html = f"Here are the Learning Support Centers under {regional_center_name.title()} Regional Center:<br><br>"
                     for lsc in lsc_data:
                         rc_id = lsc.get("lscrc")
                         if isinstance(rc_id, str) and rc_id.isdigit():
@@ -363,11 +379,31 @@ def process_query(request):
                             rc_id = None
 
                         rc_name = rc_name_mapping.get(rc_id, "N/A")
-                        lsc_list_html += f"<li><strong>{lsc['lscname']}</strong><br><strong>Address:</strong> {lsc['lscaddress']}<br><strong>Contact:</strong> {lsc['lscnumber']}<br><strong>Coordinator:</strong> {lsc['coordinatorname']}<br><strong>Email:</strong> <a href='mailto:{lsc['coordinatormail']}' style='color: #0066cc;'>{lsc['coordinatormail']}</a><br><strong>RC:</strong> {rc_id}<br><strong>RC Name:</strong> {rc_name}</li>"
-                    lsc_list_html += "</ol>"
-                    return JsonResponse({"message": lsc_list_html})
-                else:
-                    return JsonResponse({"message": "Sorry, I couldn't fetch LSC data at the moment."})
+
+                        lsc_name = lsc.get("lscname", "N/A").replace("'", "&apos;")
+                        lsc_address = lsc.get("lscaddress", "N/A").replace("'", "&apos;")
+                        lsc_number = lsc.get("lscnumber", "N/A")
+                        lsc_coordinator = lsc.get("coordinatorname", "N/A").replace("'", "&apos;")
+                        lsc_email = lsc.get("coordinatormail", "N/A")
+
+                        lsc_dropdown_html += f'''
+                    <div class="lsc-item" style="border-radius:8px;">
+                    <div class="lsc-header" onclick="toggleDropdown(this)" style="cursor:pointer; display:flex; justify-content:space-between; font-weight:bold; color:#0066cc;">
+                        <span>{lsc_name}</span>
+                        <span class="lsc-arrow">&#9660;</span>
+                    </div>
+                    <div class="lsc-details" style="display:none; margin-top:8px;">
+                        <strong>Address:</strong> {lsc_address}<br>
+                        <strong>Contact:</strong> {lsc_number}<br>
+                        <strong>Coordinator:</strong> {lsc_coordinator}<br>
+                        <strong>Email:</strong> <a href="mailto:{lsc_email}" style="color:#0066cc;">{lsc_email}</a><br>
+                        <strong>RC ID:</strong> {rc_id}<br>
+                        <strong>RC Name:</strong> {rc_name}
+                    </div>
+                    </div>
+                    '''
+                    return JsonResponse({"message": lsc_dropdown_html})
+
 
             elif any(keyword in normalized_query for keyword in center_keywords):
                 if formatted_centers_list:
@@ -381,9 +417,9 @@ def process_query(request):
                     
             elif any(keyword in normalized_query for keyword in lsc_keywords):
                 print(">>> General LSC query detected, fetching all LSCs...")
-                lsc_data = fetch_lsc_data()
+                lsc_data = fetch_lsc_data(rc_name_mapping=rc_name_mapping)
                 if lsc_data:
-                    all_lscs_html = "Here are the Learning Support Centers:<br><br>"
+                    all_lscs_html = "Here are our Learning Support Centers:<br><br>"
                     for lsc in lsc_data:
                         rc_id = lsc.get("lscrc")
                         if isinstance(rc_id, str) and rc_id.isdigit():
@@ -401,7 +437,7 @@ def process_query(request):
                         lsc_email = lsc.get("coordinatormail", "N/A")
 
                         all_lscs_html += f'''
-            <div class="lsc-item" style="border:1px solid #ccc; border-radius:8px; margin:10px 0; padding:10px;">
+            <div class="lsc-item" style="border-radius:8px; ">
             <div class="lsc-header" onclick="toggleDropdown(this)" style="cursor:pointer; display:flex; justify-content:space-between; font-weight:bold; color:#0066cc;">
                 <span>{lsc_name}</span>
                 <span class="lsc-arrow">&#9660;</span>
@@ -705,55 +741,55 @@ def process_query(request):
     return JsonResponse({"message": "I'm sorry, I couldn't understand your request. Please try rephrasing it."})
 
 
-def fetch_lsc_data(regional_center_name=None):
+def fetch_lsc_data(regional_center_name=None, rc_name_mapping=None):
     """
-    Fetches LSC data from the API.
-    Optionally filters by regional center name.
+    Fetches LSC data and optionally filters by regional center name.
+    Also formats LSCs in dropdown format for RC-specific queries.
     """
-    global LSC_API_URL, UNIVERSITY_API_KEY  # Declare global to ensure access
+    api_url = LSC_API_URL
+    headers = {"X-API-KEY": UNIVERSITY_API_KEY}
+    
     try:
-        print(f">>> Fetching LSC data for regional center: {regional_center_name}")
-        lsc_headers = {
-            "X-API-KEY": UNIVERSITY_API_KEY,
-            "Accept": "application/json",
-        }
-        params = {}
-        if regional_center_name:
-            params["regional_center"] = (
-                regional_center_name  # Assuming 'regional_center' is the parameter name
-            )
-        response = requests.get(
-            LSC_API_URL, headers=lsc_headers, params=params, timeout=10
-        )
+        response = requests.get(api_url, headers=headers, timeout=10)
+        response.raise_for_status()
+        lsc_data = response.json().get("lsc", [])
 
-        print(f">>> LSC API Response Status: {response.status_code}")
-        print(
-            f">>> LSC API Response Content: {response.text[:500]}"
-        )  # Log first 500 characters of response
-        response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
-        lsc_data = response.json()
+        if regional_center_name and rc_name_mapping:
+            target_rc_id = None
+            regional_center_name = regional_center_name.strip().lower()
 
-        if regional_center_name:
-            # Filter LSCs by regional center name
-            filtered_lscs = [
-                rc
-                for rc in lsc_data.get("lsc", [])
-                if rc.get("lscname").lower() == regional_center_name.lower()
-            ]
+            for rc_id, rc_name in rc_name_mapping.items():
+                cleaned = rc_name.replace('–', '-').replace('—', '-').replace('\xa0', ' ')
+                if '-' in cleaned:
+                    after_dash = cleaned.split('-')[-1].strip().lower()
+                else:
+                    after_dash = cleaned.strip().lower()
+
+                print(f"Checking user input '{regional_center_name}' against trimmed RC part '{after_dash}'")
+                if regional_center_name == after_dash:
+                    target_rc_id = rc_id
+                    break
+
+            if target_rc_id is None:
+                print(f"No regional center matches '{regional_center_name}' after trimming")
+                return []
+
+            filtered_lscs = []
+            for lsc in lsc_data:
+                lsc_rc_id = lsc.get("lscrc")
+                if isinstance(lsc_rc_id, str) and lsc_rc_id.isdigit():
+                    lsc_rc_id = int(lsc_rc_id)
+                if lsc_rc_id == target_rc_id:
+                    filtered_lscs.append(lsc)
             return filtered_lscs
+
         else:
-            # TODO: Ensure the LSC API returns the full regional center object (including 'rcname') within 'lscrc'
-            # if 'lscrc' is a foreign key. If not, a separate API call to fetch regional center details
-            # based on 'lscrc' ID would be necessary here.
-            lsc_list = lsc_data.get("lsc", [])
-            for lsc in lsc_list:
-                print(
-                    f"DEBUG in fetch_lsc_data: LSC Name: {lsc.get('lscname')}, LSC RC ID (raw): {lsc.get('lscrc')}"
-                )
-            return lsc_list
+            return lsc_data
     except requests.exceptions.RequestException as e:
         print(f"Error fetching LSC data: {e}")
         return None
+
+
 
 def handle_specific_program_field_query(user_query, all_programs):
     """
